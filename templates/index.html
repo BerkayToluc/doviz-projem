@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css"/>
     <style>
         body { background-color: #000000; color: #FFFFFF; font-family: 'Segoe UI', sans-serif; }
-        .card { background-color: #121212; border: 1px solid #333; border-radius: 15px; margin-bottom: 20px; transition: 0.3s; }
+        .card { background-color: #121212; border: 1px solid #333; border-radius: 15px; margin-bottom: 20px; }
         .text-bright { color: #FFFFFF !important; font-weight: 600; }
         .price-tag { font-size: 1.6rem; font-weight: bold; color: #00FF41; text-shadow: 0 0 5px #00FF41; transition: 0.5s; }
         .header-title { color: #FFD700; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #FFD700; display: inline-block; padding-bottom: 5px; }
@@ -24,32 +24,35 @@
             <div class="col-md-6">
                 <div class="card p-4 shadow">
                     <h3 class="text-bright mb-3">💱 Döviz Hesapla</h3>
-                    <form method="POST">
-                        <input type="hidden" name="form_tipi" value="doviz">
-                        <input type="number" step="0.01" name="miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Miktar Giriniz">
-                        <select name="birim" class="form-select mb-3 bg-dark text-white border-secondary">
-                            <option value="USD">Dolar (USD)</option>
-                            <option value="EUR">Euro (EUR)</option>
-                            <option value="GBP">Sterlin (GBP)</option>
-                            <option value="JPY">Japon Yeni (JPY)</option>
-                            <option value="PLN">Polonya Zlotisi (PLN)</option>
-                        </select>
-                        <button type="submit" class="btn btn-primary w-100 fw-bold">TL'YE ÇEVİR</button>
-                    </form>
-                    {% if doviz_sonuc %}<div class="alert alert-info mt-3 bg-primary text-white border-0">{{ miktar }} {{ birim }} = {{ doviz_sonuc }} TL</div>{% endif %}
+                    <input type="number" id="calc-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Miktar Giriniz">
+                    <select id="calc-birim" class="form-select mb-3 bg-dark text-white border-secondary">
+                        <option value="USD">Dolar (USD)</option>
+                        <option value="EUR">Euro (EUR)</option>
+                        <option value="GBP">Sterlin (GBP)</option>
+                        <option value="JPY">Japon Yeni (JPY)</option>
+                        <option value="PLN">Polonya Zlotisi (PLN)</option>
+                    </select>
+                    <button type="button" class="btn btn-primary w-100 fw-bold" onclick="calcDoviz()">TL'YE ÇEVİR</button>
+                    <div id="doviz-sonuc-box" class="alert alert-info mt-3 bg-primary text-white border-0" style="display:none;">
+                        <span id="doviz-sonuc-text"></span>
+                    </div>
                 </div>
 
                 <div class="card p-4 shadow">
                     <h3 class="text-bright mb-3 text-warning">✨ Altın Hesapla</h3>
-                    <form method="POST">
-                        <input type="hidden" name="form_tipi" value="altin">
-                        <input type="number" step="0.01" name="altin_miktari" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Gram Miktarı">
-                        <select name="altin_turu" class="form-select mb-3 bg-dark text-white border-secondary">
-                            <option value="GRAM">Gram Altın</option>
-                        </select>
-                        <button type="submit" class="btn btn-warning w-100 fw-bold">HESAPLA</button>
-                    </form>
-                    {% if altin_sonuc %}<div class="alert alert-warning mt-3 bg-warning text-dark border-0">Toplam: {{ altin_sonuc }} TL</div>{% endif %}
+                    <input type="number" id="calc-altin-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Adet veya Gram">
+                    <select id="calc-altin-turu" class="form-select mb-3 bg-dark text-white border-secondary">
+                        <option value="GRAM">Gram Altın</option>
+                        <option value="CEYREK">Çeyrek Altın</option>
+                        <option value="YARIM">Yarım Altın</option>
+                        <option value="TAM">Tam Altın</option>
+                        <option value="CUMHURIYET">Cumhuriyet Altını</option>
+                        <option value="ATA">Ata Altını</option>
+                    </select>
+                    <button type="button" class="btn btn-warning w-100 fw-bold" onclick="calcAltin()">HESAPLA</button>
+                    <div id="altin-sonuc-box" class="alert alert-warning mt-3 bg-warning text-dark border-0" style="display:none;">
+                        <span id="altin-sonuc-text"></span>
+                    </div>
                 </div>
             </div>
 
@@ -80,29 +83,81 @@
         </div>
     </div>
 
+    <div id="gizli-depo" style="display: none;">
+        <span id="val-CEYREK">0</span>
+        <span id="val-YARIM">0</span>
+        <span id="val-TAM">0</span>
+        <span id="val-CUMHURIYET">0</span>
+        <span id="val-ATA">0</span>
+    </div>
+
     <script>
+        let eskiFiyatlar = {};
+
+        function temizleVeSayiyaCevir(text) {
+            if(!text || text === "0") return 0;
+            return parseFloat(text.replace(/[^\d,]/g, '').replace(',', '.'));
+        }
+
+        function calcDoviz() {
+            let miktar = document.getElementById('calc-miktar').value;
+            let birim = document.getElementById('calc-birim').value;
+            let el = document.getElementById('val-' + birim);
+            if (miktar && el) {
+                let kur = temizleVeSayiyaCevir(el.innerText);
+                let sonuc = miktar * kur;
+                document.getElementById('doviz-sonuc-text').innerText = miktar + " " + birim + " = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+                document.getElementById('doviz-sonuc-box').style.display = 'block';
+            }
+        }
+
+        function calcAltin() {
+            let miktar = document.getElementById('calc-altin-miktar').value;
+            let tur = document.getElementById('calc-altin-turu').value;
+            let el = document.getElementById('val-' + tur);
+            if (miktar && el) {
+                let kur = temizleVeSayiyaCevir(el.innerText);
+                let sonuc = miktar * kur;
+                document.getElementById('altin-sonuc-text').innerText = "Toplam: " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+                document.getElementById('altin-sonuc-box').style.display = 'block';
+            }
+        }
+
         function guncelle() {
             fetch('/api/fiyatlar')
                 .then(r => r.json())
                 .then(data => {
-                    const sync = (id, val, suffix) => {
-                        let el = document.getElementById('val-' + id);
-                        if(el && el.innerText !== val + suffix) {
-                            el.innerText = val + suffix;
-                            el.classList.add('update-flash');
-                            setTimeout(() => el.classList.remove('update-flash'), 600);
+                    const veriler = {...data.kurlar, ...data.altin};
+                    Object.keys(veriler).forEach(key => {
+                        let el = document.getElementById('val-' + key);
+                        if(el) {
+                            let yeniFiyatStr = veriler[key];
+                            let yeniFiyatNum = temizleVeSayiyaCevir(yeniFiyatStr);
+                            let eskiFiyatNum = eskiFiyatlar[key] || yeniFiyatNum;
+
+                            let ok = "";
+                            if (yeniFiyatNum > eskiFiyatNum) ok = ' <span style="color:#00FF41">▲</span>';
+                            else if (yeniFiyatNum < eskiFiyatNum) ok = ' <span style="color:#FF3131">▼</span>';
+
+                            let birimSembol = (key === 'ONS') ? "" : " ₺";
+                            let gosterilecekMetin = (key === 'ONS' ? "$" : "") + yeniFiyatStr + birimSembol;
+
+                            if (!el.closest('#gizli-depo')) {
+                                el.innerHTML = gosterilecekMetin + ok;
+                                if (yeniFiyatNum !== eskiFiyatNum) {
+                                    el.classList.add('update-flash');
+                                    setTimeout(() => el.classList.remove('update-flash'), 600);
+                                }
+                            } else {
+                                el.innerText = yeniFiyatStr;
+                            }
+                            eskiFiyatlar[key] = yeniFiyatNum;
                         }
-                    }
-                    sync('USD', data.kurlar.USD, " ₺");
-                    sync('EUR', data.kurlar.EUR, " ₺");
-                    sync('GBP', data.kurlar.GBP, " ₺");
-                    sync('JPY', data.kurlar.JPY, " ₺");
-                    sync('PLN', data.kurlar.PLN, " ₺");
-                    sync('GRAM', data.altin.GRAM, " ₺");
-                    sync('ONS', data.altin.ONS, "");
+                    });
                 });
         }
-        setInterval(guncelle, 10000);
+        setInterval(guncelle, 5000);
+        guncelle();
     </script>
 </body>
 </html>
