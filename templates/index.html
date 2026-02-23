@@ -9,7 +9,7 @@
         body { background-color: #000000; color: #FFFFFF; font-family: 'Segoe UI', sans-serif; }
         .card { background-color: #121212; border: 1px solid #333; border-radius: 15px; margin-bottom: 20px; }
         .text-bright { color: #FFFFFF !important; font-weight: 600; }
-        .price-tag { font-size: 1.6rem; font-weight: bold; color: #00FF41; text-shadow: 0 0 5px #00FF41; transition: 0.5s; }
+        .price-tag { font-size: 1.6rem; font-weight: bold; color: #00FF41; text-shadow: 0 0 5px #00FF41; transition: 2s; }
         .header-title { color: #FFD700; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #FFD700; display: inline-block; padding-bottom: 5px; }
         .update-flash { color: #ffffff !important; text-shadow: 0 0 15px #ffffff; }
     </style>
@@ -57,28 +57,30 @@
             </div>
 
             <div class="col-md-6">
-                <h3 class="text-bright mb-3">📈 Canlı Piyasa Verileri</h3>
-                {% for kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
-                <div class="card p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
-                        <span class="price-tag" id="val-{{kod}}">{{ kurlar[kod] }} ₺</span>
-                    </div>
-                </div>
-                {% endfor %}
+               <h3 class="text-bright mb-3">📈 Canlı Piyasa Verileri</h3>
 
-                <div class="card p-3 border-warning">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-warning fs-5">🏆 Gram Altın</span>
-                        <span class="price-tag" id="val-GRAM" style="color: #FFD700; text-shadow: 0 0 5px #FFD700;">{{ altin_fiyatlari.GRAM }} ₺</span>
-                    </div>
-                </div>
-                <div class="card p-3 border-info">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-info fs-5">🌍 Ons Altın (XAU)</span>
-                        <span class="price-tag" id="val-ONS" style="color: #00D1FF; text-shadow: 0 0 5px #00D1FF;">${{ altin_fiyatlari.ONS }}</span>
-                    </div>
-                </div>
+{% for kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
+<div class="card p-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
+        <span class="price-tag" id="val-{{kod}}">{{ kurlar.get(kod, '0,00') }} ₺</span>
+    </div>
+</div>
+{% endfor %}
+
+<div class="card p-3 border-warning">
+    <div class="d-flex justify-content-between align-items-center">
+        <span class="text-warning fs-5">🏆 Gram Altın</span>
+        <span class="price-tag" id="val-GRAM" style="color: #FFD700; text-shadow: 0 0 5px #FFD700;">{{ altin_fiyatlari.get('GRAM', '0,00') }} ₺</span>
+    </div>
+</div>
+
+<div class="card p-3 border-info">
+    <div class="d-flex justify-content-between align-items-center">
+        <span class="text-info fs-5">🌍 Ons Altın (XAU)</span>
+        <span class="price-tag" id="val-ONS" style="color: #00D1FF; text-shadow: 0 0 5px #00D1FF;">${{ altin_fiyatlari.get('ONS', '0,00') }}</span>
+    </div>
+</div>
             </div>
         </div>
     </div>
@@ -146,7 +148,7 @@
                                 el.innerHTML = gosterilecekMetin + ok;
                                 if (yeniFiyatNum !== eskiFiyatNum) {
                                     el.classList.add('update-flash');
-                                    setTimeout(() => el.classList.remove('update-flash'), 600);
+                                    setTimeout(() => el.classList.remove('update-flash'), 3000);
                                 }
                             } else {
                                 el.innerText = yeniFiyatStr;
