@@ -1,81 +1,49 @@
 import os
-from flask import Flask, render_template, request
 import requests
+from flask import Flask, render_template, request, jsonify
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-
-def verileri_getir():
-    api_url = "https://api.exchangerate-api.com/v4/latest/USD"
+def verileri_kazi():
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
     try:
-        response = requests.get(api_url, timeout=10)
-        data = response.json()
-        rates = data.get("rates", {})
-        usd_try = rates.get("TRY", 1)
+        url = "https://www.doviz.com"
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.content, "html.parser")
 
-        # DÖVİZ KURLARI (Canlı)
-        kurlar = {
-            "USD": round(usd_try, 2),
-            "EUR": round(usd_try / rates.get("EUR", 1), 2),
-            "GBP": round(usd_try / rates.get("GBP", 1), 2),
-            "JPY": round(usd_try / rates.get("JPY", 1), 4),
-            "PLN": round(usd_try / rates.get("PLN", 1), 2)
-        }
+        def deger_al(anahtar):
+            el = soup.find("span", {"data-socket-key": anahtar})
+            if el:
+                return el.text.strip()
+            return "0"
 
-        # --- CANLI VE ÇARPANLI ALTIN HESABI ---
+        # Verileri çekiyoruz
+        usd = deger_al("USD")
+        eur = deger_al("EUR")
+        gbp = deger_al("GBP")
+        gram = deger_al("gram-altin")
+        ons = deger_al("ons-altin")
 
-        # 1. ONS HESABI:
-        # API'den gelen veriyi senin verdiğin 5154$ seviyesine getiren hassas katsayı.
-        # Dünya piyasası değiştikçe bu rakam da oynayacak.
-        ham_ons_api = 1 / rates.get("XAU", 0.00045) if "XAU" in rates else 2300
-        ons_fiyati = round(ham_ons_api * 2.241, 2)
-
-        # 2. GRAM HESABI:
-        # (Ons / 31.1035) * Dolar_Kuru * Türkiye_Makas_Farkı
-        # Bu 1.05 çarpanı, fiyata %5'lik bir "Türkiye fiziki piyasa primi" ekler.
-        # Bu sayede gram tam 7258 TL civarından başlar ve Dolar artarsa o da artar.
-        gram_altin = round(((ons_fiyati / 31.1035) * usd_try) * 1.05, 2)
-
-        altin_fiyatlari = {
-            "GRAM": gram_altin,
-            "CEYREK": round(gram_altin * 1.63, 2),
-            "YARIM": round(gram_altin * 3.26, 2),
-            "TAM": round(gram_altin * 6.52, 2),
-            "ONS": ons_fiyati
-        }
-        return kurlar, altin_fiyatlari
-    except:
-        # Bağlantı koparsa son bilinen rakamlar
-        return {"USD": 35.0}, {"GRAM": 7258, "ONS": 5154}
-
+        kurlar = {"USD": usd, "EUR": eur, "GBP": gbp}
+        altin = {"GRAM": gram, "ONS": ons}
+        return kurlar, altin
+    except Exception as e:
+        print(f"Hata: {e}")
+        return {"USD": "35,50", "EUR": "38,50", "GBP": "45,00"}, {"GRAM": "7.258,00", "ONS": "5.154,00"}
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    kurlar, altin_fiyatlari = verileri_getir()
-    doviz_sonuc, altin_sonuc, miktar, birim = None, None, None, None
+    kurlar, altin_fiyatlari = verileri_kazi()
+    return render_template("index.html", kurlar=kurlar, altin_fiyatlari=altin_fiyatlari)
 
-    if request.method == "POST":
-        form_tipi = request.form.get("form_tipi")
-        try:
-            if form_tipi == "doviz":
-                m_raw = request.form.get("miktar")
-                if m_raw:
-                    miktar = float(m_raw)
-                    birim = request.form.get("birim")
-                    doviz_sonuc = round(miktar * kurlar.get(birim, 0), 2)
-            elif form_tipi == "altin":
-                am_raw = request.form.get("altin_miktari")
-                if am_raw:
-                    am = float(am_raw)
-                    at = request.form.get("altin_turu")
-                    if at in altin_fiyatlari:
-                        altin_sonuc = round(am * altin_fiyatlari[at], 2)
-        except:
-            pass
-
-    return render_template("index.html", kurlar=kurlar, altin_fiyatlari=altin_fiyatlari,
-                           doviz_sonuc=doviz_sonuc, altin_sonuc=altin_sonuc, miktar=miktar, birim=birim)
-
+# JAVASCRIPT'İN 10 SANİYEDE BİR ÇALACAĞI KAPI
+@app.route("/api/fiyatlar")
+def api_fiyatlar():
+    kurlar, altin = verileri_kazi()
+    return jsonify({"kurlar": kurlar, "altin": altin})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
