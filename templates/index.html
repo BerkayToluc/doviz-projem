@@ -2,110 +2,107 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Berkay Borsa - Canlı</title>
+    <title>Berkay Finans Terminali</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css"/>
     <style>
-        body { background-color: #0b0e11; color: #eaecef; font-family: 'Segoe UI', sans-serif; padding-top: 50px; }
-        .main-card { background-color: #1e2329; border: 1px solid #333; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .price-row { border-bottom: 1px solid #2d333a; padding: 15px 0; display: flex; justify-content: space-between; align-items: center; }
-        .price-row:last-child { border-bottom: none; }
-        .label-text { font-size: 1.1rem; color: #848e9c; }
-        .val-text { font-size: 1.4rem; font-weight: bold; color: #f0b90b; transition: all 0.5s; }
-        .calc-section { background-color: #2b3139; border-radius: 15px; padding: 25px; }
-        .form-control { background: #1e2329; border: 1px solid #474d57; color: white; border-radius: 8px; }
-        .form-control:focus { background: #1e2329; color: white; border-color: #f0b90b; box-shadow: none; }
-        .btn-gold { background-color: #f0b90b; border: none; color: black; font-weight: bold; width: 100%; border-radius: 8px; padding: 10px; margin-top: 10px; }
-        .btn-gold:hover { background-color: #d8a608; }
-        .flash-up { color: #00ff00 !important; }
+        body { background-color: #000000; color: #FFFFFF; font-family: 'Segoe UI', sans-serif; }
+        .card { background-color: #121212; border: 1px solid #333; border-radius: 15px; margin-bottom: 20px; transition: 0.3s; }
+        .text-bright { color: #FFFFFF !important; font-weight: 600; }
+        .price-tag { font-size: 1.6rem; font-weight: bold; color: #00FF41; text-shadow: 0 0 5px #00FF41; transition: 0.5s; }
+        .header-title { color: #FFD700; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #FFD700; display: inline-block; padding-bottom: 5px; }
+        .update-flash { color: #ffffff !important; text-shadow: 0 0 15px #ffffff; }
     </style>
 </head>
-<body>
+<body class="p-4">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h1 class="header-title">Berkay Finans Terminali</h1>
+        </div>
 
-<div class="container">
-    <div class="main-card p-5">
-        <h2 class="text-center mb-5" style="letter-spacing: 2px;">BERKAY <span style="color:#f0b90b">BORSA</span></h2>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card p-4 shadow">
+                    <h3 class="text-bright mb-3">💱 Döviz Hesapla</h3>
+                    <form method="POST">
+                        <input type="hidden" name="form_tipi" value="doviz">
+                        <input type="number" step="0.01" name="miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Miktar Giriniz">
+                        <select name="birim" class="form-select mb-3 bg-dark text-white border-secondary">
+                            <option value="USD">Dolar (USD)</option>
+                            <option value="EUR">Euro (EUR)</option>
+                            <option value="GBP">Sterlin (GBP)</option>
+                            <option value="JPY">Japon Yeni (JPY)</option>
+                            <option value="PLN">Polonya Zlotisi (PLN)</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">TL'YE ÇEVİR</button>
+                    </form>
+                    {% if doviz_sonuc %}<div class="alert alert-info mt-3 bg-primary text-white border-0">{{ miktar }} {{ birim }} = {{ doviz_sonuc }} TL</div>{% endif %}
+                </div>
 
-        <div class="row g-5">
-            <div class="col-md-6 order-md-1 order-2">
-                <div class="calc-section">
-                    <h4 class="mb-4 text-center">Hızlı Çevirici</h4>
-
-                    <div class="mb-4">
-                        <label class="form-label small text-muted">Dolar Miktarı (USD)</label>
-                        <input type="number" id="inp-usd" class="form-control" placeholder="Örn: 100">
-                        <button class="btn btn-gold" onclick="calcUsd()">DOLAR HESAPLA</button>
-                        <p id="res-usd" class="mt-2 text-center fw-bold text-warning"></p>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label small text-muted">Altın Miktarı (Gram)</label>
-                        <input type="number" id="inp-gram" class="form-control" placeholder="Örn: 10">
-                        <button class="btn btn-gold" onclick="calcGram()">ALTIN HESAPLA</button>
-                        <p id="res-gram" class="mt-2 text-center fw-bold text-warning"></p>
-                    </div>
+                <div class="card p-4 shadow">
+                    <h3 class="text-bright mb-3 text-warning">✨ Altın Hesapla</h3>
+                    <form method="POST">
+                        <input type="hidden" name="form_tipi" value="altin">
+                        <input type="number" step="0.01" name="altin_miktari" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Gram Miktarı">
+                        <select name="altin_turu" class="form-select mb-3 bg-dark text-white border-secondary">
+                            <option value="GRAM">Gram Altın</option>
+                        </select>
+                        <button type="submit" class="btn btn-warning w-100 fw-bold">HESAPLA</button>
+                    </form>
+                    {% if altin_sonuc %}<div class="alert alert-warning mt-3 bg-warning text-dark border-0">Toplam: {{ altin_sonuc }} TL</div>{% endif %}
                 </div>
             </div>
 
-            <div class="col-md-6 order-md-2 order-1">
-                <h4 class="mb-4 text-white-50 text-center text-md-start">Anlık Veriler</h4>
-                <div class="price-row">
-                    <span class="label-text">🇺🇸 Dolar (USD)</span>
-                    <span class="val-text" id="v-USD">{{ kurlar.USD }} ₺</span>
+            <div class="col-md-6">
+                <h3 class="text-bright mb-3">📈 Canlı Piyasa Verileri</h3>
+                {% for kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
+                        <span class="price-tag" id="val-{{kod}}">{{ kurlar[kod] }} ₺</span>
+                    </div>
                 </div>
-                <div class="price-row">
-                    <span class="label-text">🇪🇺 Euro (EUR)</span>
-                    <span class="val-text" id="v-EUR">{{ kurlar.EUR }} ₺</span>
+                {% endfor %}
+
+                <div class="card p-3 border-warning">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-warning fs-5">🏆 Gram Altın</span>
+                        <span class="price-tag" id="val-GRAM" style="color: #FFD700; text-shadow: 0 0 5px #FFD700;">{{ altin_fiyatlari.GRAM }} ₺</span>
+                    </div>
                 </div>
-                <div class="price-row">
-                    <span class="label-text">🟡 Gram Altın</span>
-                    <span class="val-text" id="v-GRAM">{{ altin_fiyatlari.GRAM }} ₺</span>
-                </div>
-                <div class="price-row">
-                    <span class="label-text">🌍 Ons Altın</span>
-                    <span class="val-text" id="v-ONS">${{ altin_fiyatlari.ONS }}</span>
+                <div class="card p-3 border-info">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-info fs-5">🌍 Ons Altın (XAU)</span>
+                        <span class="price-tag" id="val-ONS" style="color: #00D1FF; text-shadow: 0 0 5px #00D1FF;">${{ altin_fiyatlari.ONS }}</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    function toNum(txt) {
-        return parseFloat(txt.replace(/[^\d,]/g, '').replace(',', '.'));
-    }
-
-    function calcUsd() {
-        let m = document.getElementById('inp-usd').value;
-        let k = toNum(document.getElementById('v-USD').innerText);
-        document.getElementById('res-usd').innerText = (m * k).toLocaleString('tr-TR') + " ₺";
-    }
-
-    function calcGram() {
-        let m = document.getElementById('inp-gram').value;
-        let k = toNum(document.getElementById('v-GRAM').innerText);
-        document.getElementById('res-gram').innerText = (m * k).toLocaleString('tr-TR') + " ₺";
-    }
-
-    // 10 Saniyede bir otomatik senkronizasyon
-    setInterval(() => {
-        fetch('/api/fiyatlar')
-            .then(r => r.json())
-            .then(data => {
-                const sync = (id, val) => {
-                    let el = document.getElementById(id);
-                    if(el && el.innerText !== val) {
-                        el.innerText = val;
-                        el.classList.add('flash-up');
-                        setTimeout(() => el.classList.remove('flash-up'), 600);
+    <script>
+        function guncelle() {
+            fetch('/api/fiyatlar')
+                .then(r => r.json())
+                .then(data => {
+                    const sync = (id, val, suffix) => {
+                        let el = document.getElementById('val-' + id);
+                        if(el && el.innerText !== val + suffix) {
+                            el.innerText = val + suffix;
+                            el.classList.add('update-flash');
+                            setTimeout(() => el.classList.remove('update-flash'), 600);
+                        }
                     }
-                }
-                sync('v-USD', data.kurlar.USD + " ₺");
-                sync('v-EUR', data.kurlar.EUR + " ₺");
-                sync('v-GRAM', data.altin.GRAM + " ₺");
-                sync('v-ONS', "$" + data.altin.ONS);
-            });
-    }, 10000);
-</script>
-
+                    sync('USD', data.kurlar.USD, " ₺");
+                    sync('EUR', data.kurlar.EUR, " ₺");
+                    sync('GBP', data.kurlar.GBP, " ₺");
+                    sync('JPY', data.kurlar.JPY, " ₺");
+                    sync('PLN', data.kurlar.PLN, " ₺");
+                    sync('GRAM', data.altin.GRAM, " ₺");
+                    sync('ONS', data.altin.ONS, "");
+                });
+        }
+        setInterval(guncelle, 10000);
+    </script>
 </body>
 </html>
