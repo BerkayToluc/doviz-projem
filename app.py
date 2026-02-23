@@ -5,16 +5,17 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
+
 def verileri_kazi():
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    headers = {'User-Agent': 'Mozilla/5.0'}
     try:
-        # Ana Sayfa Verileri
+        # Ana sayfa
         res = requests.get("https://www.doviz.com", headers=headers, timeout=10)
         soup = BeautifulSoup(res.content, "html.parser")
 
-        # Ons ve bazı özel altınlar için ek sayfa
-        ons_res = requests.get("https://www.doviz.com/altin/ons-altin", headers=headers, timeout=10)
-        ons_soup = BeautifulSoup(ons_res.content, "html.parser")
+        # Altın sayfası (Ons için)
+        altin_res = requests.get("https://www.doviz.com/altin", headers=headers, timeout=10)
+        altin_soup = BeautifulSoup(altin_res.content, "html.parser")
 
         def bul(s, key):
             el = s.find("span", {"data-socket-key": key})
@@ -29,7 +30,7 @@ def verileri_kazi():
         }
         altin = {
             "GRAM": bul(soup, "gram-altin"),
-            "ONS": bul(ons_soup, "ons-altin"),
+            "ONS": bul(altin_soup, "ons-altin"),
             "CEYREK": bul(soup, "ceyrek-altin"),
             "YARIM": bul(soup, "yarim-altin"),
             "TAM": bul(soup, "tam-altin"),
@@ -37,19 +38,24 @@ def verileri_kazi():
             "ATA": bul(soup, "ata-altini")
         }
         return kurlar, altin
-    except:
-        return {"USD": "0"}, {"GRAM": "0"}
+    except Exception as e:
+        print(f"Scraper hatası: {e}")
+        return {"USD": "0", "EUR": "0", "GBP": "0", "JPY": "0", "PLN": "0"}, {"GRAM": "0", "ONS": "0"}
+
 
 @app.route("/")
 def index():
     kurlar, altin_fiyatlari = verileri_kazi()
     return render_template("index.html", kurlar=kurlar, altin_fiyatlari=altin_fiyatlari)
 
+
 @app.route("/api/fiyatlar")
 def api_fiyatlar():
     kurlar, altin = verileri_kazi()
     return jsonify({"kurlar": kurlar, "altin": altin})
 
+
 if __name__ == "__main__":
+    # Render için gerekli port ayarı
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
