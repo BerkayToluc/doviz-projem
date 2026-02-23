@@ -12,7 +12,7 @@ def verileri_kazi():
     altin = {}
 
     try:
-        # --- 1. KAYNAK: DOVIZ.COM (USD, EUR, GBP, GRAM VE DIGERLERI) ---
+        # --- 1. KAYNAK: DOVIZ.COM (Standart Birimler) ---
         res_doviz = requests.get("https://www.doviz.com", headers=headers, timeout=8)
         soup_doviz = BeautifulSoup(res_doviz.content, "html.parser")
 
@@ -30,38 +30,34 @@ def verileri_kazi():
         altin["CUMHURIYET"] = doviz_bul("cumhuriyet-altini")
         altin["ATA"] = doviz_bul("ata-altini")
 
-        # --- 2. KAYNAK: MYNET FİNANS (SADECE JPY, PLN VE ONS) ---
-        # Döviz sayfası (JPY ve PLN için)
+        # --- 2. KAYNAK: MYNET FİNANS (JPY, PLN VE ONS İÇİN ÖZEL AVCI) ---
+
+        # Döviz Sayfası (JPY ve PLN için)
         res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=8)
         soup_m = BeautifulSoup(res_m.content, "html.parser")
 
-        def mynet_avla(link_kelimesi):
-            # Mynet'te ilgili dövizin linkini bulur
-            link = soup_m.find("a", href=lambda x: x and link_kelimesi in x)
+        def mynet_avla(soup_obj, link_kelimesi):
+            # Sayfadaki ilgili linki bulur (Örn: polonya-zlotisi)
+            link = soup_obj.find("a", href=lambda x: x and link_kelimesi in x)
             if link:
-                # Linkin içinde bulunduğu satırı (tr) bulur
+                # Linkin bulunduğu satırdaki (tr) değerleri çeker
                 satir = link.find_parent("tr")
                 if satir:
                     hucreler = satir.find_all("td")
-                    # 3. hücre (index 2) 'Son' fiyattır
-                    return hucreler[2].text.strip()
+                    return hucreler[2].text.strip()  # 3. sütun fiyat
             return None
 
-        kurlar["JPY"] = mynet_avla("japon-yeni")
-        kurlar["PLN"] = mynet_avla("polonya-zlotisi")
+        kurlar["JPY"] = mynet_avla(soup_m, "japon-yeni")
+        kurlar["PLN"] = mynet_avla(soup_m, "polonya-zlotisi")
 
-        # Altın sayfası (ONS için)
+        # Altın Sayfası (ONS için)
         res_ma = requests.get("https://finans.mynet.com/altin/", headers=headers, timeout=8)
         soup_ma = BeautifulSoup(res_ma.content, "html.parser")
 
-        ons_link = soup_ma.find("a", href=lambda x: x and "ons-altin" in x)
-        if ons_link:
-            ons_satir = ons_link.find_parent("tr")
-            altin["ONS"] = ons_satir.find_all("td")[2].text.strip() if ons_satir else "---"
-        else:
-            altin["ONS"] = "---"
+        # Ons altın için link avcısı
+        altin["ONS"] = mynet_avla(soup_ma, "ons-altin")
 
-        # --- TEMİZLİK VE KONTROL ---
+        # --- TEMİZLİK ---
         for d in [kurlar, altin]:
             for k, v in d.items():
                 if not v or v == "0":
