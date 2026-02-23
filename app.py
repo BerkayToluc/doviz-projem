@@ -5,92 +5,62 @@ import requests
 app = Flask(__name__)
 
 
-# Verileri API'den çeken ana fonksiyon
 def verileri_getir():
-    # Döviz ve Altın (XAU) verileri için USD tabanlı çekiyoruz
     api_url = "https://api.exchangerate-api.com/v4/latest/USD"
     try:
         response = requests.get(api_url)
         data = response.json()
         oranlar = data["rates"]
-        try_degeri = oranlar.get("TRY", 0)
+        usd_try = oranlar.get("TRY", 0)
 
-        # Döviz Kurları (1 Birim = Kaç TL?)
+        # Tüm birimlerin TL karşılığını hassas hesaplıyoruz
         kurlar = {
-            "USD": round(try_degeri, 2),
-            "EUR": round(try_degeri / oranlar["EUR"], 2) if "EUR" in oranlar else 0,
-            "GBP": round(try_degeri / oranlar["GBP"], 2) if "GBP" in oranlar else 0,
-            "JPY": round(try_degeri / oranlar["JPY"], 4) if "JPY" in oranlar else 0,
-            "PLN": round(try_degeri / oranlar["PLN"], 2) if "PLN" in oranlar else 0
+            "USD": round(usd_try, 2),
+            "EUR": round(usd_try / oranlar["EUR"], 2) if "EUR" in oranlar else 0,
+            "GBP": round(usd_try / oranlar["GBP"], 2) if "GBP" in oranlar else 0,
+            "JPY": round(usd_try / oranlar["JPY"], 4) if "JPY" in oranlar else 0,
+            "PLN": round(usd_try / oranlar["PLN"], 2) if "PLN" in oranlar else 0
         }
 
-        # Altın Hesaplamaları (XAU ons fiyatıdır)
-        # Ons değerini API'den alıyoruz (1 / XAU_orani = Ons Fiyatı)
+        # Altın (Gram altın piyasa fiyatına en yakın hesaplama)
         ons_fiyati = 1 / oranlar["XAU"] if "XAU" in oranlar else 2030
-        gram_altin = round((ons_fiyati / 31.1035) * try_degeri, 2)
+        gram_altin = round((ons_fiyati / 31.1035) * usd_try, 2)
 
         altin_fiyatlari = {
             "GRAM": gram_altin,
-            "CEYREK": round(gram_altin * 1.75, 2),
-            "YARIM": round(gram_altin * 3.50, 2),
-            "TAM": round(gram_altin * 7.00, 2),
+            "CEYREK": round(gram_altin * 1.63, 2),  # Saf altın karşılığı (yaklaşık)
+            "YARIM": round(gram_altin * 3.26, 2),
+            "TAM": round(gram_altin * 6.52, 2),
             "ONS": round(ons_fiyati, 2)
         }
-
         return kurlar, altin_fiyatlari
-    except Exception as e:
-        print(f"Veri çekme hatası: {e}")
+    except:
         return {"USD": 0, "EUR": 0, "GBP": 0, "JPY": 0, "PLN": 0}, {"GRAM": 0, "ONS": 0}
 
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    # Sayfa her yüklendiğinde güncel verileri al
     kurlar, altin_fiyatlari = verileri_getir()
-
-    # Değişkenleri en başta tanımlıyoruz (UnboundLocalError hatasını önlemek için)
-    doviz_sonuc = None
-    altin_sonuc = None
-    miktar = None
-    birim = None
-    altin_miktari = None
-    altin_turu = None
+    doviz_sonuc, altin_sonuc, miktar, birim = None, None, None, None
 
     if request.method == "POST":
         form_tipi = request.form.get("form_tipi")
-
         try:
-            # Döviz Formu Gönderildiyse
             if form_tipi == "doviz":
-                miktar_raw = request.form.get("miktar")
-                if miktar_raw:
-                    miktar = float(miktar_raw)
-                    birim = request.form.get("birim")
-                    if birim in kurlar:
-                        doviz_sonuc = round(miktar * kurlar[birim], 2)
-
-            # Altın Formu Gönderildiyse
+                miktar = float(request.form.get("miktar", 0))
+                birim = request.form.get("birim")
+                doviz_sonuc = round(miktar * kurlar[birim], 2)
             elif form_tipi == "altin":
-                altin_miktari_raw = request.form.get("altin_miktari")
-                if altin_miktari_raw:
-                    altin_miktari = float(altin_miktari_raw)
-                    altin_turu = request.form.get("altin_turu")
-                    if altin_turu in altin_fiyatlari:
-                        altin_sonuc = round(altin_miktari * altin_fiyatlari[altin_turu], 2)
-        except Exception as e:
-            print(f"Form işleme hatası: {e}")
+                a_miktar = float(request.form.get("altin_miktari", 0))
+                a_turu = request.form.get("altin_turu")
+                altin_sonuc = round(a_miktar * altin_fiyatlari[a_turu], 2)
+        except:
+            pass
 
-    # Tüm değişkenleri HTML'e gönder
-    return render_template("index.html",
-                           kurlar=kurlar,
-                           altin_fiyatlari=altin_fiyatlari,
-                           doviz_sonuc=doviz_sonuc,
-                           altin_sonuc=altin_sonuc,
-                           miktar=miktar,
-                           birim=birim)
+    return render_template("index.html", kurlar=kurlar, altin_fiyatlari=altin_fiyatlari,
+                           doviz_sonuc=doviz_sonuc, altin_sonuc=altin_sonuc, miktar=miktar, birim=birim)
 
 
-# Render.com için port ayarı
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

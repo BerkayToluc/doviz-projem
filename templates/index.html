@@ -2,140 +2,99 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Berkay Finans Terminali</title>
+    <title>Finans Terminali</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css"/>
     <style>
-        body { background-color: #121212; font-family: 'Inter', sans-serif; color: #e0e0e0; }
-        .card { border: none; border-radius: 15px; }
-        .kur-card { background: #1e1e1e; border-left: 4px solid #3498db; transition: 0.3s; }
-        .kur-card:hover { transform: translateY(-5px); background: #252525; }
-        .altin-card { background: #1e1e1e; border-left: 4px solid #f1c40f; }
-        .header-gradient { background: linear-gradient(90deg, #f1c40f, #e67e22); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: bold; }
-        .btn-calculate { border-radius: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-        .result-box { background: #2c3e50; border: 1px solid #34495e; color: #ecf0f1; border-radius: 12px; }
+        body { background-color: #000000; color: #FFFFFF; font-family: sans-serif; }
+        .card { background-color: #1A1A1A; border: 1px solid #333; border-radius: 12px; margin-bottom: 15px; }
+        .text-white-pure { color: #FFFFFF !important; }
+        .price-tag { font-size: 1.5rem; font-weight: bold; color: #00FF00; } /* Canlı yeşil fiyatlar */
+        .header-box { border-bottom: 2px solid #FFD700; margin-bottom: 30px; padding-bottom: 10px; }
     </style>
 </head>
-<body>
-
-<div class="container py-5">
-    <div class="text-center mb-5">
-        <h1 class="display-4 header-gradient">Finans Dashboard</h1>
-        <p class="text-muted #FFFFFF">Anlık Döviz ve Altın Veri Terminali</p>
-    </div>
-
-    <div class="row g-4">
-        <div class="col-lg-7">
-            <div class="card p-4 shadow mb-4 bg-dark">
-                <h3 class="mb-4 text-primary font-weight-bold">💱 Döviz Çevirici</h3>
-                <form method="POST">
-                    <input type="hidden" name="form_tipi" value="doviz">
-                    <div class="row g-2">
-                        <div class="col-md-5">
-                            <input type="number" step="0.01" name="miktar" class="form-control form-control-lg bg-secondary text-white border-0" placeholder="Miktar" required>
-                        </div>
-                        <div class="col-md-4">
-                            <select name="birim" class="form-select form-select-lg bg-secondary text-white border-0">
-                                <option value="USD">Dolar (USD)</option>
-                                <option value="EUR">Euro (EUR)</option>
-                                <option value="GBP">Sterlin (GBP)</option>
-                                <option value="JPY">Japon Yeni (JPY)</option>
-                                <option value="PLN">Polonya Zlotisi (PLN)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-primary btn-lg w-100 btn-calculate">HESAPLA</button>
-                        </div>
-                    </div>
-                </form>
-
-                {% if doviz_sonuc %}
-                <div class="result-box p-3 mt-4 text-center">
-                    <span class="fs-5">{{ miktar }} {{ birim }} = </span>
-                    <span class="fs-2 d-block text-info">{{ doviz_sonuc }} ₺</span>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="card p-4 shadow bg-dark">
-                <h3 class="mb-4 text-warning">✨ Altın Hesaplayıcı</h3>
-                <form method="POST">
-                    <input type="hidden" name="form_tipi" value="altin">
-                    <div class="row g-2">
-                        <div class="col-md-5">
-                            <input type="number" step="0.01" name="altin_miktari" class="form-control form-control-lg bg-secondary text-white border-0" placeholder="Adet/Gram" required>
-                        </div>
-                        <div class="col-md-4">
-                            <select name="altin_turu" class="form-select form-select-lg bg-secondary text-white border-0">
-                                <option value="GRAM">Gram Altın</option>
-                                <option value="CEYREK">Çeyrek Altın</option>
-                                <option value="YARIM">Yarım Altın</option>
-                                <option value="TAM">Tam Altın</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-warning btn-lg w-100 btn-calculate">HESAPLA</button>
-                        </div>
-                    </div>
-                </form>
-
-                {% if altin_sonuc %}
-                <div class="result-box p-3 mt-4 text-center" style="border-color: #f1c40f;">
-                    <span class="fs-5">Toplam Altın Değeri:</span>
-                    <span class="fs-2 d-block text-warning">{{ altin_sonuc }} ₺</span>
-                </div>
-                {% endif %}
-            </div>
+<body class="p-4">
+    <div class="container">
+        <div class="header-box text-center">
+            <h1 style="color: #FFD700;">DÖVİZ VE ALTIN TERMİNALİ</h1>
         </div>
 
-        <div class="col-lg-5">
-            <h3 class="mb-4 text-primary">📈 Canlı Döviz</h3>
-            <div class="card kur-card mb-2 p-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div><span class="fi fi-us me-2"></span> <strong>USD / TRY</strong></div>
-                    <span class="fs-5 text-white">{{ kurlar.USD }} ₺</span>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card p-4">
+                    <h3 class="text-white-pure">💱 Döviz Çevir</h3>
+                    <form method="POST">
+                        <input type="hidden" name="form_tipi" value="doviz">
+                        <input type="number" step="0.01" name="miktar" class="form-control mb-2" placeholder="Miktar">
+                        <select name="birim" class="form-select mb-2">
+                            <option value="USD">Dolar (USD)</option>
+                            <option value="EUR">Euro (EUR)</option>
+                            <option value="GBP">Sterlin (GBP)</option>
+                            <option value="JPY">Japon Yeni (JPY)</option>
+                            <option value="PLN">Polonya Zlotisi (PLN)</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary w-100">HESAPLA</button>
+                    </form>
+                    {% if doviz_sonuc %}<div class="alert alert-primary mt-3">{{ miktar }} {{ birim }} = {{ doviz_sonuc }} TL</div>{% endif %}
                 </div>
-            </div>
-            <div class="card kur-card mb-2 p-3" style="border-left-color: #2ecc71;">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div><span class="fi fi-eu me-2"></span> <strong>EUR / TRY</strong></div>
-                    <span class="fs-5 text-white">{{ kurlar.EUR }} ₺</span>
-                </div>
-            </div>
-            <div class="card kur-card mb-4 p-3" style="border-left-color: #9b59b6;">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div><span class="fi fi-gb me-2"></span> <strong>GBP / TRY</strong></div>
-                    <span class="fs-5 text-white">{{ kurlar.GBP }} ₺</span>
+
+                <div class="card p-4">
+                    <h3 class="text-white-pure text-warning">✨ Altın Hesapla</h3>
+                    <form method="POST">
+                        <input type="hidden" name="form_tipi" value="altin">
+                        <input type="number" step="0.01" name="altin_miktari" class="form-control mb-2" placeholder="Adet/Gram">
+                        <select name="altin_turu" class="form-select mb-2">
+                            <option value="GRAM">Gram Altın</option>
+                            <option value="CEYREK">Çeyrek Altın</option>
+                            <option value="YARIM">Yarım Altın</option>
+                            <option value="TAM">Tam Altın</option>
+                        </select>
+                        <button type="submit" class="btn btn-warning w-100">HESAPLA</button>
+                    </form>
+                    {% if altin_sonuc %}<div class="alert alert-warning mt-3">Toplam: {{ altin_sonuc }} TL</div>{% endif %}
                 </div>
             </div>
 
-            <h3 class="mb-4 text-warning">🟡 Altın Fiyatları</h3>
-            <div class="card altin-card mb-2 p-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>🥇 <strong>Gram Altın</strong></div>
-                    <span class="fs-5 text-white">{{ altin_fiyatlari.GRAM }} ₺</span>
+            <div class="col-md-6">
+                <h3 class="text-white-pure mb-3">📈 Canlı Veriler</h3>
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between">
+                        <span><span class="fi fi-us"></span> USD/TRY</span>
+                        <span class="price-tag">{{ kurlar.USD }} ₺</span>
+                    </div>
                 </div>
-            </div>
-            <div class="card altin-card mb-2 p-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>💰 <strong>Çeyrek Altın</strong></div>
-                    <span class="fs-5 text-white">{{ altin_fiyatlari.CEYREK }} ₺</span>
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between">
+                        <span><span class="fi fi-eu"></span> EUR/TRY</span>
+                        <span class="price-tag">{{ kurlar.EUR }} ₺</span>
+                    </div>
                 </div>
-            </div>
-            <div class="card altin-card mb-2 p-3" style="border-left-color: #bdc3c7;">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>🌍 <strong>Ons Altın</strong></div>
-                    <span class="fs-5 text-white">${{ altin_fiyatlari.ONS }}</span>
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between">
+                        <span><span class="fi fi-gb"></span> GBP/TRY</span>
+                        <span class="price-tag">{{ kurlar.GBP }} ₺</span>
+                    </div>
+                </div>
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between">
+                        <span><span class="fi fi-jp"></span> JPY/TRY</span>
+                        <span class="price-tag">{{ kurlar.JPY }} ₺</span>
+                    </div>
+                </div>
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between">
+                        <span><span class="fi fi-pl"></span> PLN/TRY</span>
+                        <span class="price-tag">{{ kurlar.PLN }} ₺</span>
+                    </div>
+                </div>
+                <div class="card p-3" style="border-left: 5px solid #FFD700;">
+                    <div class="d-flex justify-content-between">
+                        <span>🏆 Gram Altın</span>
+                        <span class="price-tag" style="color: #FFD700;">{{ altin_fiyatlari.GRAM }} ₺</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-
-<footer class="text-center py-4 text-muted border-top border-secondary mt-5">
-    <p>© 2026 Berkay Finans Terminali - Veriler anlık API üzerinden çekilmektedir.</p>
-</footer>
-
 </body>
 </html>
