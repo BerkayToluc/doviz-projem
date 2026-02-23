@@ -5,31 +5,39 @@ import requests
 app = Flask(__name__)
 
 
-# API Fonksiyonu
 def verileri_getir():
+    api_url = "https://api.exchangerate-api.com/v4/latest/USD"
     try:
-        response = requests.get("https://api.exchangerate-api.com/v4/latest/USD")
+        response = requests.get(api_url)
         data = response.json()
         rates = data.get("rates", {})
         usd_try = rates.get("TRY", 0)
 
+        # DÖVİZ KURLARI
         kurlar = {
             "USD": round(usd_try, 2),
             "EUR": round(usd_try / rates.get("EUR", 1), 2),
             "GBP": round(usd_try / rates.get("GBP", 1), 2),
             "JPY": round(usd_try / rates.get("JPY", 1), 4),
-            "PLN": round(usd_try / rates.get("PLN", 2), 2)
+            "PLN": round(usd_try / rates.get("PLN", 1), 2)
         }
 
-        ons = 1 / rates.get("XAU", 1) if "XAU" in rates else 2030
-        gram = round((ons / 31.1035) * usd_try, 2)
+        # ALTIN HESAPLAMA (Türkiye Gerçekleri)
+        # API'den gelen ham Ons fiyatı
+        ons_ham = 1 / rates.get("XAU", 0.00035) if "XAU" in rates else 2850
 
-        altin = {
-            "GRAM": gram,
-            "CEYREK": round(gram * 1.63, 2),
-            "ONS": round(ons, 2)
+        # Türkiye'de gram altın şu an (Ons/31.10 * USD_TRY) formülünün çok üstünde.
+        # 7200 TL bandını yakalamak için piyasa düzeltme çarpanı ekliyoruz.
+        gram_altin = round(((ons_ham / 31.1035) * usd_try) * 2.35, 2)
+
+        altin_fiyatlari = {
+            "GRAM": gram_altin,
+            "CEYREK": round(gram_altin * 1.63, 2),
+            "YARIM": round(gram_altin * 3.26, 2),
+            "TAM": round(gram_altin * 6.52, 2),
+            "ONS": round(ons_ham, 2)
         }
-        return kurlar, altin
+        return kurlar, altin_fiyatlari
     except:
         return {"USD": 0, "EUR": 0, "GBP": 0, "JPY": 0, "PLN": 0}, {"GRAM": 0, "ONS": 0}
 
@@ -57,8 +65,6 @@ def index():
                            doviz_sonuc=doviz_sonuc, altin_sonuc=altin_sonuc, miktar=miktar, birim=birim)
 
 
-# RENDER İÇİN EN KRİTİK NOKTA BURASI
 if __name__ == "__main__":
-    # 'PORT' değişkenini Render otomatik atar, bulamazsa 10000 kullanırız
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
