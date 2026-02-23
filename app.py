@@ -8,12 +8,11 @@ app = Flask(__name__)
 
 def verileri_kazi():
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-
     kurlar = {}
     altin = {}
 
     try:
-        # --- 1. KAYNAK: DOVIZ.COM (Standart Birimler) ---
+        # --- 1. KAYNAK: DOVIZ.COM (USD, EUR, GBP, GRAM VE DIGERLERI) ---
         res_doviz = requests.get("https://www.doviz.com", headers=headers, timeout=8)
         soup_doviz = BeautifulSoup(res_doviz.content, "html.parser")
 
@@ -31,35 +30,38 @@ def verileri_kazi():
         altin["CUMHURIYET"] = doviz_bul("cumhuriyet-altini")
         altin["ATA"] = doviz_bul("ata-altini")
 
-        # --- 2. KAYNAK: MYNET FİNANS (Sadece JPY, PLN ve ONS) ---
-        res_mynet = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=8)
-        soup_mynet = BeautifulSoup(res_mynet.content, "html.parser")
+        # --- 2. KAYNAK: MYNET FİNANS (SADECE JPY, PLN VE ONS) ---
+        # Döviz sayfası (JPY ve PLN için)
+        res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=8)
+        soup_m = BeautifulSoup(res_m.content, "html.parser")
 
-        def mynet_cek(id_parcasi):
-            satir = soup_mynet.find("tr", {"id": lambda x: x and id_parcasi in x})
-            if satir:
-                hucreler = satir.find_all("td")
-                return hucreler[2].text.strip() if len(hucreler) > 2 else None
+        def mynet_avla(link_kelimesi):
+            # Mynet'te ilgili dövizin linkini bulur
+            link = soup_m.find("a", href=lambda x: x and link_kelimesi in x)
+            if link:
+                # Linkin içinde bulunduğu satırı (tr) bulur
+                satir = link.find_parent("tr")
+                if satir:
+                    hucreler = satir.find_all("td")
+                    # 3. hücre (index 2) 'Son' fiyattır
+                    return hucreler[2].text.strip()
             return None
 
-        # Sorun çıkaranları Mynet'ten alıyoruz
-        kurlar["JPY"] = mynet_cek("japon-yeni")
-        kurlar["PLN"] = mynet_cek("polonya-zlotisi")
+        kurlar["JPY"] = mynet_avla("japon-yeni")
+        kurlar["PLN"] = mynet_avla("polonya-zlotisi")
 
-        # ONS Altın için Mynet Altın sayfasına hızlıca bakıyoruz
-        res_m_altin = requests.get("https://finans.mynet.com/altin/", headers=headers, timeout=8)
-        soup_m_altin = BeautifulSoup(res_m_altin.content, "html.parser")
+        # Altın sayfası (ONS için)
+        res_ma = requests.get("https://finans.mynet.com/altin/", headers=headers, timeout=8)
+        soup_ma = BeautifulSoup(res_ma.content, "html.parser")
 
-        def mynet_altin_cek(id_parcasi):
-            satir = soup_m_altin.find("tr", {"id": lambda x: x and id_parcasi in x})
-            if satir:
-                hucreler = satir.find_all("td")
-                return hucreler[2].text.strip() if len(hucreler) > 2 else None
-            return None
+        ons_link = soup_ma.find("a", href=lambda x: x and "ons-altin" in x)
+        if ons_link:
+            ons_satir = ons_link.find_parent("tr")
+            altin["ONS"] = ons_satir.find_all("td")[2].text.strip() if ons_satir else "---"
+        else:
+            altin["ONS"] = "---"
 
-        altin["ONS"] = mynet_altin_cek("ons-altin")
-
-        # --- TEMİZLİK ---
+        # --- TEMİZLİK VE KONTROL ---
         for d in [kurlar, altin]:
             for k, v in d.items():
                 if not v or v == "0":
@@ -69,7 +71,7 @@ def verileri_kazi():
 
     except Exception as e:
         print(f"Hata: {e}")
-        return {"USD": "---"}, {"GRAM": "---"}
+        return {"USD": "Hata"}, {"GRAM": "Hata"}
 
 
 @app.route("/")
