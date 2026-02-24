@@ -17,7 +17,7 @@ def verileri_kazi():
     altin = {}
 
     try:
-        # --- 1. KAYNAK: DOVIZ.COM ---
+        # --- 1. KAYNAK: DOVIZ.COM (Dolar, Euro, Gram Altın vb.) ---
         res_doviz = requests.get("https://www.doviz.com", headers=headers, timeout=8)
         soup_doviz = BeautifulSoup(res_doviz.content, "html.parser")
 
@@ -35,45 +35,44 @@ def verileri_kazi():
         altin["CUMHURIYET"] = doviz_bul("cumhuriyet-altini")
         altin["ATA"] = doviz_bul("ata-altini")
 
-        # --- 2. KAYNAK: MYNET ---
-        res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=8)
-        soup_m = BeautifulSoup(res_m.content, "html.parser")
-
-        def mynet_avla(soup_obj, link_kelimesi):
-            link = soup_obj.find("a", href=lambda x: x and link_kelimesi in x)
+        # --- 2. KAYNAK: MYNET (Sadece Japon Yeni) ---
+        # İstediğin gibi JPY'ye dokunmadım
+        try:
+            res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=8)
+            soup_m = BeautifulSoup(res_m.content, "html.parser")
+            link = soup_m.find("a", href=lambda x: x and "japon-yeni" in x)
             if link:
                 satir = link.find_parent("tr")
                 if satir:
-                    hucreler = satir.find_all("td")
-                    return hucreler[2].text.strip()
-            return None
+                    kurlar["JPY"] = satir.find_all("td")[2].text.strip()
+        except:
+            kurlar["JPY"] = "---"
 
-        kurlar["JPY"] = mynet_avla(soup_m, "japon-yeni")
-        kurlar["PLN"] = mynet_avla(soup_m, "polonya-zlotisi")
+        # --- 3. ONS VE PLN (PARATIC'TEN NOKTA ATIŞI) ---
 
-        # --- 3. KAYNAK: BIGPARA (KESİN FİYAT ODAKLI) ---
+        # ONS ALTIN
         try:
-            res_bigpara = requests.get("https://bigpara.hurriyet.com.tr/altin/ons-altin-fiyati/", headers=headers,
-                                       timeout=5)
-            soup_bp = BeautifulSoup(res_bigpara.content, "html.parser")
-
-            # Yüzdeyi değil, direkt fiyatı hedefliyoruz
-            # Bigpara'da fiyat tam olarak 'id="son_fiyat"' içindedir.
-            ons_fiyat_el = soup_bp.find("span", {"id": "son_fiyat"})
-
-            if ons_fiyat_el:
-                altin["ONS"] = ons_fiyat_el.text.strip()
-            else:
-                # Alternatif: Eğer id değişirse diye yedek plan
-                ons_alt_el = soup_bp.select_one(".detay-fiyat-alanı .last-price")
-                altin["ONS"] = ons_alt_el.text.strip() if ons_alt_el else "---"
+            res_p_ons = requests.get("https://piyasa.paratic.com/altin/ons/", headers=headers, timeout=5)
+            soup_p_ons = BeautifulSoup(res_p_ons.content, "html.parser")
+            ons_el = soup_p_ons.find("div", {"class": "price"})
+            # Fiyatı al, doları at, sadece ilk sayı kısmını tut
+            altin["ONS"] = ons_el.text.strip().replace("$", "").replace(" ", "").split('\n')[0] if ons_el else "---"
         except:
             altin["ONS"] = "---"
+
+        # POLONYA ZLOTİSİ (PLN)
+        try:
+            res_p_pln = requests.get("https://piyasa.paratic.com/doviz/polonya-zlotisi/", headers=headers, timeout=5)
+            soup_p_pln = BeautifulSoup(res_p_pln.content, "html.parser")
+            pln_el = soup_p_pln.find("div", {"class": "price"})
+            kurlar["PLN"] = pln_el.text.strip().split('\n')[0] if pln_el else "---"
+        except:
+            kurlar["PLN"] = "---"
 
         # --- TEMİZLİK VE BELLEK GÜNCELLEME ---
         for d in [kurlar, altin]:
             for k, v in d.items():
-                if not v or v == "0" or "%" in str(v):  # Eğer kazara yüzde gelirse temizle
+                if not v or v == "0" or "%" in str(v):
                     d[k] = "---"
 
         son_veriler["kurlar"] = kurlar
@@ -88,19 +87,17 @@ def verileri_kazi():
 @app.route("/")
 def index():
     if son_veriler["kurlar"]:
-        kurlar = son_veriler["kurlar"]
-        altin_fiyatlari = son_veriler["altin"]
+        k, a = son_veriler["kurlar"], son_veriler["altin"]
     else:
-        kurlar, altin_fiyatlari = verileri_kazi()
-    return render_template("index.html", kurlar=kurlar, altin_fiyatlari=altin_fiyatlari)
+        k, a = verileri_kazi()
+    return render_template("index.html", kurlar=k, altin_fiyatlari=a)
 
 
 @app.route("/api/fiyatlar")
 def api_fiyatlar():
-    kurlar, altin = verileri_kazi()
-    return jsonify({"kurlar": kurlar, "altin": altin})
+    k, a = verileri_kazi()
+    return jsonify({"kurlar": k, "altin": a})
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), debug=False)
