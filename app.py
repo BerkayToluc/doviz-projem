@@ -16,7 +16,7 @@ def verileri_kazi():
     altin = {}
 
     try:
-        # --- 1. KAYNAK: DOVIZ.COM (Dolar, Euro, Altınlar ve Gümüş) ---
+        # --- 1. KAYNAK: DOVIZ.COM (Temel Kurlar ve Altınlar) ---
         res_doviz = requests.get("https://www.doviz.com", headers=headers, timeout=8)
         soup_doviz = BeautifulSoup(res_doviz.content, "html.parser")
 
@@ -33,22 +33,19 @@ def verileri_kazi():
         altin["TAM"] = doviz_bul("tam-altin")
         altin["CUMHURIYET"] = doviz_bul("cumhuriyet-altini")
         altin["ATA"] = doviz_bul("ata-altini")
-        # Gümüş Ons verisini buradan çekiyoruz
-        altin["ONS-GUMUS"] = doviz_bul("gumus-ons")
 
-        # --- 2. KAYNAK: MYNET (Sadece Japon Yeni) ---
+        # --- 2. KAYNAK: MYNET (Japon Yeni) ---
         try:
             res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=8)
             soup_m = BeautifulSoup(res_m.content, "html.parser")
             link = soup_m.find("a", href=lambda x: x and "japon-yeni" in x)
             if link:
                 satir = link.find_parent("tr")
-                if satir:
-                    kurlar["JPY"] = satir.find_all("td")[2].text.strip()
+                kurlar["JPY"] = satir.find_all("td")[2].text.strip() if satir else "---"
         except:
             kurlar["JPY"] = "---"
 
-        # --- 3. ONS VE PLN (PARATIC'TEN) ---
+        # --- 3. KAYNAK: PARATIC (ONS ALTIN, GÜMÜŞ ONS, PLN) ---
         # ONS ALTIN
         try:
             res_p_ons = requests.get("https://piyasa.paratic.com/altin/ons/", headers=headers, timeout=5)
@@ -57,6 +54,15 @@ def verileri_kazi():
             altin["ONS"] = ons_el.text.strip().replace("$", "").replace(" ", "").split('\n')[0] if ons_el else "---"
         except:
             altin["ONS"] = "---"
+
+        # GÜMÜŞ ONS (PARATIC ANA KAYNAK)
+        try:
+            res_p_gumus = requests.get("https://piyasa.paratic.com/gumus/ons/", headers=headers, timeout=5)
+            soup_p_gumus = BeautifulSoup(res_p_gumus.content, "html.parser")
+            gumus_el = soup_p_gumus.find("div", {"class": "price"})
+            altin["ONS-GUMUS"] = gumus_el.text.strip().replace("$", "").replace(" ", "").split('\n')[0] if gumus_el else "---"
+        except:
+            altin["ONS-GUMUS"] = "---"
 
         # POLONYA ZLOTİSİ (PLN)
         try:
@@ -67,10 +73,22 @@ def verileri_kazi():
         except:
             kurlar["PLN"] = "---"
 
+        # --- 4. YEDEKLEME (ALTIN.IN) - Eğer Paratic'ten veri gelmezse ---
+        if altin.get("ONS-GUMUS") == "---" or not altin.get("ONS-GUMUS"):
+            try:
+                res_ain = requests.get("https://www.altin.in", headers=headers, timeout=5)
+                soup_ain = BeautifulSoup(res_ain.content, "html.parser")
+                # altin.in üzerindeki gümüş ons (xag) seçici
+                gumus_yedek = soup_ain.find("dfn", {"id": "dfn_gumus_ons"})
+                if gumus_yedek:
+                    altin["ONS-GUMUS"] = gumus_yedek.text.strip()
+            except:
+                pass
+
         # --- TEMİZLİK VE BELLEK GÜNCELLEME ---
         for d in [kurlar, altin]:
             for k, v in d.items():
-                if not v or v == "0" or "%" in str(v):
+                if not v or v == "0" or v == "0,00" or "%" in str(v):
                     d[k] = "---"
 
         son_veriler["kurlar"] = kurlar
@@ -78,7 +96,7 @@ def verileri_kazi():
         return kurlar, altin
 
     except Exception as e:
-        print(f"Hata: {e}")
+        print(f"Genel Hata: {e}")
         return son_veriler.get("kurlar", {}), son_veriler.get("altin", {})
 
 @app.route("/")
@@ -93,6 +111,5 @@ def api_fiyatlar():
     return jsonify({"kurlar": k, "altin": a})
 
 if __name__ == "__main__":
-    # Render'ın port hatasını bitiren kesin çözüm:
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
