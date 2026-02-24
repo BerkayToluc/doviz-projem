@@ -55,9 +55,9 @@ def verileri_kazi():
         except:
             altin["ONS"] = "---"
 
-        # GÜMÜŞ ONS (PARATIC ANA KAYNAK)
+        # GÜMÜŞ ONS (PARATIC ANA KAYNAK - LİNK DÜZELTİLDİ)
         try:
-            res_p_gumus = requests.get("https://piyasa.paratic.com/gumus/ons/", headers=headers, timeout=5)
+            res_p_gumus = requests.get("https://piyasa.paratic.com/forex/emtia/gumus-ons/", headers=headers, timeout=5)
             soup_p_gumus = BeautifulSoup(res_p_gumus.content, "html.parser")
             gumus_el = soup_p_gumus.find("div", {"class": "price"})
             altin["ONS-GUMUS"] = gumus_el.text.strip().replace("$", "").replace(" ", "").split('\n')[0] if gumus_el else "---"
