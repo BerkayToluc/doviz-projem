@@ -8,14 +8,16 @@ app = Flask(__name__)
 # --- HIZLI AÇILIŞ İÇİN BELLEK (CACHE) ---
 son_veriler = {"kurlar": {}, "altin": {}}
 
+
 def verileri_kazi():
     global son_veriler
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
     kurlar = {}
     altin = {}
 
     try:
-        # --- 1. KAYNAK: DOVIZ.COM (Dolar, Euro, Gram Altın vb.) ---
+        # --- 1. KAYNAK: DOVIZ.COM ---
         res_doviz = requests.get("https://www.doviz.com", headers=headers, timeout=8)
         soup_doviz = BeautifulSoup(res_doviz.content, "html.parser")
 
@@ -33,7 +35,7 @@ def verileri_kazi():
         altin["CUMHURIYET"] = doviz_bul("cumhuriyet-altini")
         altin["ATA"] = doviz_bul("ata-altini")
 
-        # --- 2. KAYNAK: MYNET (JPY ve PLN için) ---
+        # --- 2. KAYNAK: MYNET ---
         res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=8)
         soup_m = BeautifulSoup(res_m.content, "html.parser")
 
@@ -49,20 +51,29 @@ def verileri_kazi():
         kurlar["JPY"] = mynet_avla(soup_m, "japon-yeni")
         kurlar["PLN"] = mynet_avla(soup_m, "polonya-zlotisi")
 
-        # --- 3. KAYNAK: BIGPARA (Sadece GÜNCEL ONS ALTIN için) ---
+        # --- 3. KAYNAK: BIGPARA (KESİN FİYAT ODAKLI) ---
         try:
-            res_bigpara = requests.get("https://bigpara.hurriyet.com.tr/altin/ons-altin-fiyati/", headers=headers, timeout=5)
+            res_bigpara = requests.get("https://bigpara.hurriyet.com.tr/altin/ons-altin-fiyati/", headers=headers,
+                                       timeout=5)
             soup_bp = BeautifulSoup(res_bigpara.content, "html.parser")
-            # Bigpara'da canlı fiyat genellikle bu class içindedir
-            ons_el = soup_bp.find("span", {"class": "last-price"}) or soup_bp.find("span", {"class": "value"})
-            altin["ONS"] = ons_el.text.strip() if ons_el else "---"
+
+            # Yüzdeyi değil, direkt fiyatı hedefliyoruz
+            # Bigpara'da fiyat tam olarak 'id="son_fiyat"' içindedir.
+            ons_fiyat_el = soup_bp.find("span", {"id": "son_fiyat"})
+
+            if ons_fiyat_el:
+                altin["ONS"] = ons_fiyat_el.text.strip()
+            else:
+                # Alternatif: Eğer id değişirse diye yedek plan
+                ons_alt_el = soup_bp.select_one(".detay-fiyat-alanı .last-price")
+                altin["ONS"] = ons_alt_el.text.strip() if ons_alt_el else "---"
         except:
             altin["ONS"] = "---"
 
         # --- TEMİZLİK VE BELLEK GÜNCELLEME ---
         for d in [kurlar, altin]:
             for k, v in d.items():
-                if not v or v == "0":
+                if not v or v == "0" or "%" in str(v):  # Eğer kazara yüzde gelirse temizle
                     d[k] = "---"
 
         son_veriler["kurlar"] = kurlar
@@ -71,7 +82,8 @@ def verileri_kazi():
 
     except Exception as e:
         print(f"Hata: {e}")
-        return son_veriler.get("kurlar", {"USD": "Hata"}), son_veriler.get("altin", {"GRAM": "Hata"})
+        return son_veriler.get("kurlar", {}), son_veriler.get("altin", {})
+
 
 @app.route("/")
 def index():
@@ -82,10 +94,12 @@ def index():
         kurlar, altin_fiyatlari = verileri_kazi()
     return render_template("index.html", kurlar=kurlar, altin_fiyatlari=altin_fiyatlari)
 
+
 @app.route("/api/fiyatlar")
 def api_fiyatlar():
     kurlar, altin = verileri_kazi()
     return jsonify({"kurlar": kurlar, "altin": altin})
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
