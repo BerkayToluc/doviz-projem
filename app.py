@@ -46,7 +46,6 @@ def verileri_kazi():
             kurlar["JPY"] = "---"
 
         # --- 3. KAYNAK: PARATIC (ONS ALTIN, GÜMÜŞ ONS, PLN) ---
-        # ONS ALTIN
         try:
             res_p_ons = requests.get("https://piyasa.paratic.com/altin/ons/", headers=headers, timeout=5)
             soup_p_ons = BeautifulSoup(res_p_ons.content, "html.parser")
@@ -55,7 +54,6 @@ def verileri_kazi():
         except:
             altin["ONS"] = "---"
 
-        # GÜMÜŞ ONS (PARATIC ANA KAYNAK - LİNK DÜZELTİLDİ)
         try:
             res_p_gumus = requests.get("https://piyasa.paratic.com/forex/emtia/gumus-ons/", headers=headers, timeout=5)
             soup_p_gumus = BeautifulSoup(res_p_gumus.content, "html.parser")
@@ -64,7 +62,6 @@ def verileri_kazi():
         except:
             altin["ONS-GUMUS"] = "---"
 
-        # POLONYA ZLOTİSİ (PLN)
         try:
             res_p_pln = requests.get("https://piyasa.paratic.com/doviz/polonya-zlotisi/", headers=headers, timeout=5)
             soup_p_pln = BeautifulSoup(res_p_pln.content, "html.parser")
@@ -73,12 +70,11 @@ def verileri_kazi():
         except:
             kurlar["PLN"] = "---"
 
-        # --- 4. YEDEKLEME (ALTIN.IN) - Eğer Paratic'ten veri gelmezse ---
+        # --- 4. YEDEKLEME (ALTIN.IN) ---
         if altin.get("ONS-GUMUS") == "---" or not altin.get("ONS-GUMUS"):
             try:
                 res_ain = requests.get("https://www.altin.in", headers=headers, timeout=5)
                 soup_ain = BeautifulSoup(res_ain.content, "html.parser")
-                # altin.in üzerindeki gümüş ons (xag) seçici
                 gumus_yedek = soup_ain.find("dfn", {"id": "dfn_gumus_ons"})
                 if gumus_yedek:
                     altin["ONS-GUMUS"] = gumus_yedek.text.strip()
@@ -101,9 +97,9 @@ def verileri_kazi():
 
 @app.route("/")
 def index():
-    if not son_veriler["kurlar"]:
-        verileri_kazi()
-    return render_template("index.html", kurlar=son_veriler["kurlar"], altin_fiyatlari=son_veriler["altin"])
+    # ÇÖZÜM BURADA: Render'ın botu kontrol ettiğinde beklemesin diye kazıma işlemini sildik.
+    # HTML anında yüklenir, JS arkadan API'ye vurup verileri doldurur.
+    return render_template("index.html", kurlar=son_veriler.get("kurlar", {}), altin_fiyatlari=son_veriler.get("altin", {}))
 
 @app.route("/api/fiyatlar")
 def api_fiyatlar():
