@@ -10,7 +10,6 @@
         .card { background-color: #121212; border: 1px solid #333; border-radius: 15px; margin-bottom: 20px; }
         .text-bright { color: #FFFFFF !important; font-weight: 600; }
 
-        /* Fiyatlar Varsayılan Olarak Beyaz */
         .price-tag {
             font-size: 1.6rem;
             font-weight: bold;
@@ -18,13 +17,11 @@
             transition: color 0.5s ease, text-shadow 0.5s ease;
         }
 
-        /* Artış ve Azalış Renk Tanımları */
         .price-up { color: #00FF41 !important; text-shadow: 0 0 10px #00FF41; }
         .price-down { color: #FF3131 !important; text-shadow: 0 0 10px #FF3131; }
 
         .header-title { color: #FFD700; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #FFD700; display: inline-block; padding-bottom: 5px; }
 
-        /* Yanıp Sönme Efekti */
         .update-flash { animation: flash-animation 1s; }
         @keyframes flash-animation {
             0% { opacity: 1; }
@@ -100,16 +97,23 @@
                         <span class="price-tag" id="val-ONS">${{ altin_fiyatlari.get('ONS', '0,00') }}</span>
                     </div>
                 </div>
+
+                <div class="card p-3" style="border: 1px solid #C0C0C0;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span style="color: #C0C0C0;" class="fs-5">🥈 Gümüş Ons (XAG)</span>
+                        <span class="price-tag" id="val-ONS-GUMUS">${{ altin_fiyatlari.get('ONS-GUMUS', '0,00') }}</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <div id="gizli-depo" style="display: none;">
-        <span id="val-CEYREK">0</span>
-        <span id="val-YARIM">0</span>
-        <span id="val-TAM">0</span>
-        <span id="val-CUMHURIYET">0</span>
-        <span id="val-ATA">0</span>
+        <span id="val-CEYREK">{{ altin_fiyatlari.get('CEYREK', '0') }}</span>
+        <span id="val-YARIM">{{ altin_fiyatlari.get('YARIM', '0') }}</span>
+        <span id="val-TAM">{{ altin_fiyatlari.get('TAM', '0') }}</span>
+        <span id="val-CUMHURIYET">{{ altin_fiyatlari.get('CUMHURIYET', '0') }}</span>
+        <span id="val-ATA">{{ altin_fiyatlari.get('ATA', '0') }}</span>
     </div>
 
     <script>
@@ -117,8 +121,15 @@
 
         function temizleVeSayiyaCevir(text) {
             if(!text || text === "0" || text === "---") return 0;
-            // Metindeki nokta ve virgülleri temizleyip sayıya çevirir
-            return parseFloat(text.replace(/[^\d,]/g, '').replace(',', '.'));
+            let ham = text.toString().replace(/[^\d,.]/g, '');
+            if (ham.includes('.') && ham.includes(',')) {
+                return parseFloat(ham.replace(/\./g, '').replace(',', '.'));
+            } else if (ham.includes(',')) {
+                return parseFloat(ham.replace(',', '.'));
+            } else if (ham.includes('.')) {
+                return parseFloat(ham);
+            }
+            return parseFloat(ham);
         }
 
         function calcDoviz() {
@@ -137,10 +148,15 @@
             let miktar = document.getElementById('calc-altin-miktar').value;
             let tur = document.getElementById('calc-altin-turu').value;
             let el = document.getElementById('val-' + tur);
+
             if (miktar && el) {
-                let kur = temizleVeSayiyaCevir(el.innerText);
-                let sonuc = miktar * kur;
-                document.getElementById('altin-sonuc-text').innerText = "Toplam: " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+                let fiyat = temizleVeSayiyaCevir(el.innerText);
+                if (fiyat === 0) {
+                    alert("Fiyat verisi henüz yüklenmedi, lütfen 2-3 saniye bekleyin.");
+                    return;
+                }
+                let sonuc = miktar * fiyat;
+                document.getElementById('altin-sonuc-text').innerText = miktar + " Adet/Gram = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
                 document.getElementById('altin-sonuc-box').style.display = 'block';
             }
         }
@@ -156,7 +172,6 @@
                             let yeniFiyatStr = veriler[key];
                             let yeniFiyatNum = temizleVeSayiyaCevir(yeniFiyatStr);
 
-                            // Eğer bu birimle ilk defa karşılaşıyorsak, eskisini yeniye eşitle (beyaz başlasın)
                             if (!(key in eskiFiyatlar)) {
                                 eskiFiyatlar[key] = yeniFiyatNum;
                             }
@@ -164,27 +179,25 @@
                             let eskiFiyatNum = eskiFiyatlar[key];
                             let ok = "";
 
-                            // Renk ve Ok Mantığı
-                            el.classList.remove('price-up', 'price-down'); // Sınıfları temizle
-
+                            el.classList.remove('price-up', 'price-down');
                             if (yeniFiyatNum > eskiFiyatNum) {
                                 ok = ' ▲';
-                                el.classList.add('price-up'); // Yeşil yap
+                                el.classList.add('price-up');
                             } else if (yeniFiyatNum < eskiFiyatNum) {
                                 ok = ' ▼';
-                                el.classList.add('price-down'); // Kırmızı yap
-                            } else {
-                                // Değişim yoksa veya ilk açılışsa beyaz kalsın (opsiyonel: önceki rengi koru)
+                                el.classList.add('price-down');
                             }
 
-                            let birimSembol = (key === 'ONS') ? "" : " ₺";
-                            let gosterilecekMetin = (key === 'ONS' ? "$" : "") + yeniFiyatStr + birimSembol;
-
                             if (!el.closest('#gizli-depo')) {
+                                // ONS ve ONS-GUMUS için dolar sembolü, diğerleri için TL
+                                let dolarMi = (key === 'ONS' || key === 'ONS-GUMUS');
+                                let birimSembol = dolarMi ? "" : " ₺";
+                                let gosterilecekMetin = (dolarMi ? "$" : "") + yeniFiyatStr + birimSembol;
                                 el.innerHTML = gosterilecekMetin + ok;
+
                                 if (yeniFiyatNum !== eskiFiyatNum) {
                                     el.classList.add('update-flash');
-                                    setTimeout(() => el.classList.remove('update-flash'), 2000);
+                                    setTimeout(() => el.classList.remove('update-flash'), 1000);
                                 }
                             } else {
                                 el.innerText = yeniFiyatStr;
@@ -194,7 +207,7 @@
                     });
                 });
         }
-        setInterval(guncelle, 5000); // 5 saniyede bir kontrol et
+        setInterval(guncelle, 5000);
         guncelle();
     </script>
 </body>

@@ -34,6 +34,7 @@ def verileri_kazi():
         altin["TAM"] = doviz_bul("tam-altin")
         altin["CUMHURIYET"] = doviz_bul("cumhuriyet-altini")
         altin["ATA"] = doviz_bul("ata-altini")
+        altin["ONS-GUMUS"] = doviz_bul("gumus-ons")
 
         # --- 2. KAYNAK: MYNET (Sadece Japon Yeni) ---
         # İstediğin gibi JPY'ye dokunmadım
