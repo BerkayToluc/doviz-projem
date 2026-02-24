@@ -28,6 +28,9 @@
             50% { opacity: 0.5; }
             100% { opacity: 1; }
         }
+
+        /* Yükleniyor yazısı için şık bir stil */
+        .loading-text { font-size: 1rem; color: #888888; font-weight: 400; font-style: italic; }
     </style>
 </head>
 <body class="p-4">
@@ -79,7 +82,9 @@
                 <div class="card p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
-                        <span class="price-tag" id="val-{{kod}}">{{ kurlar.get(kod, '0,00') }} ₺</span>
+                        <span class="price-tag" id="val-{{kod}}">
+                            {% if kurlar.get(kod) %}{{ kurlar.get(kod) }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
+                        </span>
                     </div>
                 </div>
                 {% endfor %}
@@ -87,21 +92,27 @@
                 <div class="card p-3 border-warning">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="text-warning fs-5">🏆 Gram Altın</span>
-                        <span class="price-tag" id="val-GRAM">{{ altin_fiyatlari.get('GRAM', '0,00') }} ₺</span>
+                        <span class="price-tag" id="val-GRAM">
+                            {% if altin_fiyatlari.get('GRAM') %}{{ altin_fiyatlari.get('GRAM') }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
+                        </span>
                     </div>
                 </div>
 
                 <div class="card p-3 border-info">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="text-info fs-5">🌍 Ons Altın (XAU)</span>
-                        <span class="price-tag" id="val-ONS">${{ altin_fiyatlari.get('ONS', '0,00') }}</span>
+                        <span class="price-tag" id="val-ONS">
+                            {% if altin_fiyatlari.get('ONS') %}${{ altin_fiyatlari.get('ONS') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
+                        </span>
                     </div>
                 </div>
 
                 <div class="card p-3" style="border: 1px solid #C0C0C0;">
                     <div class="d-flex justify-content-between align-items-center">
                         <span style="color: #C0C0C0;" class="fs-5">🥈 Ons Gümüş (XAG)</span>
-                        <span class="price-tag" id="val-ONS-GUMUS">${{ altin_fiyatlari.get('ONS-GUMUS', '0,00') }}</span>
+                        <span class="price-tag" id="val-ONS-GUMUS">
+                            {% if altin_fiyatlari.get('ONS-GUMUS') %}${{ altin_fiyatlari.get('ONS-GUMUS') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -119,20 +130,14 @@
     <script>
         let eskiFiyatlar = {};
 
-        // EN KRİTİK DÜZELTME: Bu fonksiyon artık Türk formatındaki sayıları (1.234,56 veya 1234,56) kusursuz anlıyor.
         function temizleVeSayiyaCevir(text) {
-            if(!text || text === "0" || text === "---") return 0;
+            if(!text || text === "0" || text === "---" || text.includes("Bağlanıyor")) return 0;
 
-            // İçinde dolar veya TL simgesi varsa temizle
             let temiz = text.toString().replace(/[₺$\s]/g, '').trim();
 
-            // Eğer "---" ise veya boşsa 0 dön
             if (temiz === "---" || temiz === "") return 0;
 
-            // Türk formatını (nokta binlik ayırıcı, virgül ondalık) uluslararası formata çevir
-            // Önce tüm noktaları sil (5.123,45 -> 5123,45)
             let noktasiz = temiz.replace(/\./g, '');
-            // Sonra virgülü noktaya çevir (5123,45 -> 5123.45)
             let sayiFormati = noktasiz.replace(',', '.');
 
             let sonuc = parseFloat(sayiFormati);
@@ -145,9 +150,10 @@
             let el = document.getElementById('val-' + birim);
 
             if (miktar && el) {
-                let kur = temizleVeSayiyaCevir(el.innerText);
+                // innerText yerine textContent kullanıldı (GİZLİ DEPO ÇÖZÜMÜ)
+                let kur = temizleVeSayiyaCevir(el.textContent);
                 if (kur === 0) {
-                     alert("Döviz verisi yükleniyor, lütfen 1-2 saniye bekleyin.");
+                     alert("Piyasa verileri yükleniyor, lütfen 1-2 saniye bekleyip tekrar deneyin.");
                      return;
                 }
                 let sonuc = miktar * kur;
@@ -162,9 +168,10 @@
             let el = document.getElementById('val-' + tur);
 
             if (miktar && el) {
-                let fiyat = temizleVeSayiyaCevir(el.innerText);
+                // innerText yerine textContent kullanıldı (GİZLİ DEPO ÇÖZÜMÜ)
+                let fiyat = temizleVeSayiyaCevir(el.textContent);
                 if (fiyat === 0) {
-                    alert("Fiyat verisi henüz yüklenmedi, lütfen 2-3 saniye bekleyin.");
+                    alert("Piyasa verileri yükleniyor, lütfen 1-2 saniye bekleyip tekrar deneyin.");
                     return;
                 }
                 let sonuc = miktar * fiyat;
@@ -178,7 +185,6 @@
             fetch('/api/fiyatlar')
                 .then(r => r.json())
                 .then(data => {
-                    // API'den gelenleri birleştir
                     const veriler = {...data.kurlar, ...data.altin};
 
                     Object.keys(veriler).forEach(key => {
@@ -186,7 +192,6 @@
                         if(el) {
                             let yeniFiyatStr = veriler[key];
 
-                            // Eğer değer "---" ise atla, işlem yapma
                             if(yeniFiyatStr === "---") return;
 
                             let yeniFiyatNum = temizleVeSayiyaCevir(yeniFiyatStr);
@@ -197,7 +202,6 @@
 
                             let eskiFiyatNum = eskiFiyatlar[key];
 
-                            // Ekranda gösterilen kartlar için yeşil/kırmızı yön oku hesapla
                             if (!el.closest('#gizli-depo')) {
                                 let ok = "";
                                 el.classList.remove('price-up', 'price-down');
@@ -220,8 +224,8 @@
                                     setTimeout(() => el.classList.remove('update-flash'), 1000);
                                 }
                             } else {
-                                // Gizli depo elemanları için sadece saf string değeri yaz, HTML bozma
-                                el.innerText = yeniFiyatStr;
+                                // innerText yerine textContent kullanıldı
+                                el.textContent = yeniFiyatStr;
                             }
 
                             eskiFiyatlar[key] = yeniFiyatNum;
@@ -231,7 +235,6 @@
                 .catch(err => console.error("Veri çekme hatası:", err));
         }
 
-        // Sayfa açıldığında anında çek ve 5 saniyede bir tekrarla
         guncelle();
         setInterval(guncelle, 5000);
     </script>
