@@ -8,7 +8,6 @@ app = Flask(__name__)
 # --- HIZLI AÇILIŞ İÇİN BELLEK (CACHE) ---
 son_veriler = {"kurlar": {}, "altin": {}}
 
-
 def verileri_kazi():
     global son_veriler
     headers = {
@@ -17,7 +16,7 @@ def verileri_kazi():
     altin = {}
 
     try:
-        # --- 1. KAYNAK: DOVIZ.COM (Dolar, Euro, Gram Altın vb.) ---
+        # --- 1. KAYNAK: DOVIZ.COM (Dolar, Euro, Altınlar ve Gümüş) ---
         res_doviz = requests.get("https://www.doviz.com", headers=headers, timeout=8)
         soup_doviz = BeautifulSoup(res_doviz.content, "html.parser")
 
@@ -34,10 +33,10 @@ def verileri_kazi():
         altin["TAM"] = doviz_bul("tam-altin")
         altin["CUMHURIYET"] = doviz_bul("cumhuriyet-altini")
         altin["ATA"] = doviz_bul("ata-altini")
+        # Gümüş Ons verisini buradan çekiyoruz
         altin["ONS-GUMUS"] = doviz_bul("gumus-ons")
 
         # --- 2. KAYNAK: MYNET (Sadece Japon Yeni) ---
-        # İstediğin gibi JPY'ye dokunmadım
         try:
             res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=8)
             soup_m = BeautifulSoup(res_m.content, "html.parser")
@@ -49,14 +48,12 @@ def verileri_kazi():
         except:
             kurlar["JPY"] = "---"
 
-        # --- 3. ONS VE PLN (PARATIC'TEN NOKTA ATIŞI) ---
-
+        # --- 3. ONS VE PLN (PARATIC'TEN) ---
         # ONS ALTIN
         try:
             res_p_ons = requests.get("https://piyasa.paratic.com/altin/ons/", headers=headers, timeout=5)
             soup_p_ons = BeautifulSoup(res_p_ons.content, "html.parser")
             ons_el = soup_p_ons.find("div", {"class": "price"})
-            # Fiyatı al, doları at, sadece ilk sayı kısmını tut
             altin["ONS"] = ons_el.text.strip().replace("$", "").replace(" ", "").split('\n')[0] if ons_el else "---"
         except:
             altin["ONS"] = "---"
@@ -84,21 +81,18 @@ def verileri_kazi():
         print(f"Hata: {e}")
         return son_veriler.get("kurlar", {}), son_veriler.get("altin", {})
 
-
 @app.route("/")
 def index():
-    if son_veriler["kurlar"]:
-        k, a = son_veriler["kurlar"], son_veriler["altin"]
-    else:
-        k, a = verileri_kazi()
-    return render_template("index.html", kurlar=k, altin_fiyatlari=a)
-
+    if not son_veriler["kurlar"]:
+        verileri_kazi()
+    return render_template("index.html", kurlar=son_veriler["kurlar"], altin_fiyatlari=son_veriler["altin"])
 
 @app.route("/api/fiyatlar")
 def api_fiyatlar():
     k, a = verileri_kazi()
     return jsonify({"kurlar": k, "altin": a})
 
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), debug=False)
+    # Render'ın port hatasını bitiren kesin çözüm:
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
