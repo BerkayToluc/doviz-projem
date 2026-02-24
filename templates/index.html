@@ -100,7 +100,7 @@
 
                 <div class="card p-3" style="border: 1px solid #C0C0C0;">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span style="color: #C0C0C0;" class="fs-5">🥈 Gümüş Ons (XAG)</span>
+                        <span style="color: #C0C0C0;" class="fs-5">🥈 Ons Gümüş (XAG)</span>
                         <span class="price-tag" id="val-ONS-GUMUS">${{ altin_fiyatlari.get('ONS-GUMUS', '0,00') }}</span>
                     </div>
                 </div>
@@ -119,25 +119,37 @@
     <script>
         let eskiFiyatlar = {};
 
+        // EN KRİTİK DÜZELTME: Bu fonksiyon artık Türk formatındaki sayıları (1.234,56 veya 1234,56) kusursuz anlıyor.
         function temizleVeSayiyaCevir(text) {
             if(!text || text === "0" || text === "---") return 0;
-            let ham = text.toString().replace(/[^\d,.]/g, '');
-            if (ham.includes('.') && ham.includes(',')) {
-                return parseFloat(ham.replace(/\./g, '').replace(',', '.'));
-            } else if (ham.includes(',')) {
-                return parseFloat(ham.replace(',', '.'));
-            } else if (ham.includes('.')) {
-                return parseFloat(ham);
-            }
-            return parseFloat(ham);
+
+            // İçinde dolar veya TL simgesi varsa temizle
+            let temiz = text.toString().replace(/[₺$\s]/g, '').trim();
+
+            // Eğer "---" ise veya boşsa 0 dön
+            if (temiz === "---" || temiz === "") return 0;
+
+            // Türk formatını (nokta binlik ayırıcı, virgül ondalık) uluslararası formata çevir
+            // Önce tüm noktaları sil (5.123,45 -> 5123,45)
+            let noktasiz = temiz.replace(/\./g, '');
+            // Sonra virgülü noktaya çevir (5123,45 -> 5123.45)
+            let sayiFormati = noktasiz.replace(',', '.');
+
+            let sonuc = parseFloat(sayiFormati);
+            return isNaN(sonuc) ? 0 : sonuc;
         }
 
         function calcDoviz() {
             let miktar = document.getElementById('calc-miktar').value;
             let birim = document.getElementById('calc-birim').value;
             let el = document.getElementById('val-' + birim);
+
             if (miktar && el) {
                 let kur = temizleVeSayiyaCevir(el.innerText);
+                if (kur === 0) {
+                     alert("Döviz verisi yükleniyor, lütfen 1-2 saniye bekleyin.");
+                     return;
+                }
                 let sonuc = miktar * kur;
                 document.getElementById('doviz-sonuc-text').innerText = miktar + " " + birim + " = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
                 document.getElementById('doviz-sonuc-box').style.display = 'block';
@@ -156,7 +168,8 @@
                     return;
                 }
                 let sonuc = miktar * fiyat;
-                document.getElementById('altin-sonuc-text').innerText = miktar + " Adet/Gram = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+                let birimText = (tur === "GRAM") ? " Gram" : " Adet";
+                document.getElementById('altin-sonuc-text').innerText = miktar + birimText + " = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
                 document.getElementById('altin-sonuc-box').style.display = 'block';
             }
         }
@@ -165,11 +178,17 @@
             fetch('/api/fiyatlar')
                 .then(r => r.json())
                 .then(data => {
+                    // API'den gelenleri birleştir
                     const veriler = {...data.kurlar, ...data.altin};
+
                     Object.keys(veriler).forEach(key => {
                         let el = document.getElementById('val-' + key);
                         if(el) {
                             let yeniFiyatStr = veriler[key];
+
+                            // Eğer değer "---" ise atla, işlem yapma
+                            if(yeniFiyatStr === "---") return;
+
                             let yeniFiyatNum = temizleVeSayiyaCevir(yeniFiyatStr);
 
                             if (!(key in eskiFiyatlar)) {
@@ -177,19 +196,20 @@
                             }
 
                             let eskiFiyatNum = eskiFiyatlar[key];
-                            let ok = "";
 
-                            el.classList.remove('price-up', 'price-down');
-                            if (yeniFiyatNum > eskiFiyatNum) {
-                                ok = ' ▲';
-                                el.classList.add('price-up');
-                            } else if (yeniFiyatNum < eskiFiyatNum) {
-                                ok = ' ▼';
-                                el.classList.add('price-down');
-                            }
-
+                            // Ekranda gösterilen kartlar için yeşil/kırmızı yön oku hesapla
                             if (!el.closest('#gizli-depo')) {
-                                // ONS ve ONS-GUMUS için dolar sembolü, diğerleri için TL
+                                let ok = "";
+                                el.classList.remove('price-up', 'price-down');
+
+                                if (yeniFiyatNum > eskiFiyatNum) {
+                                    ok = ' ▲';
+                                    el.classList.add('price-up');
+                                } else if (yeniFiyatNum < eskiFiyatNum) {
+                                    ok = ' ▼';
+                                    el.classList.add('price-down');
+                                }
+
                                 let dolarMi = (key === 'ONS' || key === 'ONS-GUMUS');
                                 let birimSembol = dolarMi ? "" : " ₺";
                                 let gosterilecekMetin = (dolarMi ? "$" : "") + yeniFiyatStr + birimSembol;
@@ -200,15 +220,20 @@
                                     setTimeout(() => el.classList.remove('update-flash'), 1000);
                                 }
                             } else {
+                                // Gizli depo elemanları için sadece saf string değeri yaz, HTML bozma
                                 el.innerText = yeniFiyatStr;
                             }
+
                             eskiFiyatlar[key] = yeniFiyatNum;
                         }
                     });
-                });
+                })
+                .catch(err => console.error("Veri çekme hatası:", err));
         }
-        setInterval(guncelle, 5000);
+
+        // Sayfa açıldığında anında çek ve 5 saniyede bir tekrarla
         guncelle();
+        setInterval(guncelle, 5000);
     </script>
 </body>
 </html>
