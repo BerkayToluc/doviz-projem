@@ -9,9 +9,28 @@
         body { background-color: #000000; color: #FFFFFF; font-family: 'Segoe UI', sans-serif; }
         .card { background-color: #121212; border: 1px solid #333; border-radius: 15px; margin-bottom: 20px; }
         .text-bright { color: #FFFFFF !important; font-weight: 600; }
-        .price-tag { font-size: 1.4rem; font-weight: bold; color: #FFFFFF; }
+
+        .price-tag {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #FFFFFF;
+            transition: color 0.5s ease, text-shadow 0.5s ease;
+        }
+
+        .price-up { color: #00FF41 !important; text-shadow: 0 0 10px #00FF41; }
+        .price-down { color: #FF3131 !important; text-shadow: 0 0 10px #FF3131; }
+
         .header-title { color: #FFD700; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #FFD700; display: inline-block; padding-bottom: 5px; }
-        .loading-text { font-size: 0.9rem; color: #888; }
+
+        .update-flash { animation: flash-animation 1s; }
+        @keyframes flash-animation {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Yükleniyor yazısı için şık bir stil */
+        .loading-text { font-size: 1rem; color: #888888; font-weight: 400; font-style: italic; }
     </style>
 </head>
 <body class="p-4">
@@ -21,89 +40,203 @@
         </div>
 
         <div class="row">
-            <div class="col-md-5">
-                <div class="card p-4 shadow mb-4">
+            <div class="col-md-6">
+                <div class="card p-4 shadow">
                     <h3 class="text-bright mb-3">💱 Döviz Hesapla</h3>
-                    <input type="number" id="calc-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Miktar">
+                    <input type="number" id="calc-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Miktar Giriniz">
                     <select id="calc-birim" class="form-select mb-3 bg-dark text-white border-secondary">
                         <option value="USD">Dolar (USD)</option>
                         <option value="EUR">Euro (EUR)</option>
+                        <option value="GBP">Sterlin (GBP)</option>
+                        <option value="JPY">Japon Yeni (JPY)</option>
+                        <option value="PLN">Polonya Zlotisi (PLN)</option>
                     </select>
-                    <button class="btn btn-primary w-100 fw-bold" onclick="calcDoviz()">HESAPLA</button>
-                    <div id="doviz-sonuc-box" class="alert alert-primary mt-3 border-0" style="display:none;"><span id="doviz-sonuc-text"></span></div>
+                    <button type="button" class="btn btn-primary w-100 fw-bold" onclick="calcDoviz()">TL'YE ÇEVİR</button>
+                    <div id="doviz-sonuc-box" class="alert alert-info mt-3 bg-primary text-white border-0" style="display:none;">
+                        <span id="doviz-sonuc-text"></span>
+                    </div>
                 </div>
 
                 <div class="card p-4 shadow">
                     <h3 class="text-bright mb-3 text-warning">✨ Altın Hesapla</h3>
-                    <input type="number" id="calc-altin-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Adet/Gram">
+                    <input type="number" id="calc-altin-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Adet veya Gram">
                     <select id="calc-altin-turu" class="form-select mb-3 bg-dark text-white border-secondary">
                         <option value="GRAM">Gram Altın</option>
                         <option value="CEYREK">Çeyrek Altın</option>
                         <option value="YARIM">Yarım Altın</option>
                         <option value="TAM">Tam Altın</option>
+                        <option value="CUMHURIYET">Cumhuriyet Altını</option>
+                        <option value="ATA">Ata Altını</option>
                     </select>
-                    <button class="btn btn-warning w-100 fw-bold" onclick="calcAltin()">HESAPLA</button>
-                    <div id="altin-sonuc-box" class="alert alert-warning mt-3 border-0" style="display:none;"><span id="altin-sonuc-text"></span></div>
+                    <button type="button" class="btn btn-warning w-100 fw-bold" onclick="calcAltin()">HESAPLA</button>
+                    <div id="altin-sonuc-box" class="alert alert-warning mt-3 bg-warning text-dark border-0" style="display:none;">
+                        <span id="altin-sonuc-text"></span>
+                    </div>
                 </div>
             </div>
 
-            <div class="col-md-7">
-                <h3 class="text-bright mb-3">📈 Canlı Piyasa</h3>
-                <div class="row">
-                    {% for kod, isim in [('USD','Dolar'),('EUR','Euro'),('GRAM','Gram Altın'),('CEYREK','Çeyrek'),('YARIM','Yarım'),('TAM','Tam Altın')] %}
-                    <div class="col-6">
-                        <div class="card p-3 mb-2">
-                            <div class="small text-secondary">{{isim}}</div>
-                            <div class="price-tag" id="val-{{kod}}"><span class="loading-text">⏳ Bekleniyor...</span></div>
-                        </div>
+            <div class="col-md-6">
+               <h3 class="text-bright mb-3">📈 Canlı Piyasa Verileri</h3>
+
+                {% for kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
+                        <span class="price-tag" id="val-{{kod}}">
+                            {% if kurlar.get(kod) %}{{ kurlar.get(kod) }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
+                        </span>
                     </div>
-                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                <div class="card p-3 border-warning">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-warning fs-5">🏆 Gram Altın</span>
+                        <span class="price-tag" id="val-GRAM">
+                            {% if altin_fiyatlari.get('GRAM') %}{{ altin_fiyatlari.get('GRAM') }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card p-3 border-info">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-info fs-5">🌍 Ons Altın (XAU)</span>
+                        <span class="price-tag" id="val-ONS">
+                            {% if altin_fiyatlari.get('ONS') %}${{ altin_fiyatlari.get('ONS') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card p-3" style="border: 1px solid #C0C0C0;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span style="color: #C0C0C0;" class="fs-5">🥈 Ons Gümüş (XAG)</span>
+                        <span class="price-tag" id="val-ONS-GUMUS">
+                            {% if altin_fiyatlari.get('ONS-GUMUS') %}${{ altin_fiyatlari.get('ONS-GUMUS') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="gizli-depo" style="display: none;">
+        <span id="val-CEYREK">{{ altin_fiyatlari.get('CEYREK', '0') }}</span>
+        <span id="val-YARIM">{{ altin_fiyatlari.get('YARIM', '0') }}</span>
+        <span id="val-TAM">{{ altin_fiyatlari.get('TAM', '0') }}</span>
+        <span id="val-CUMHURIYET">{{ altin_fiyatlari.get('CUMHURIYET', '0') }}</span>
+        <span id="val-ATA">{{ altin_fiyatlari.get('ATA', '0') }}</span>
+    </div>
+
     <script>
+        let eskiFiyatlar = {};
+
         function temizleVeSayiyaCevir(text) {
-            if (!text || text.includes("Bekleniyor")) return 0;
-            // Tüm noktaları sil, virgülü noktaya çevir
-            let temiz = text.toString().replace(/[₺$\s]/g, '').replace(/\./g, '').replace(',', '.').trim();
-            return parseFloat(temiz) || 0;
+            if(!text || text === "0" || text === "---" || text.includes("Bağlanıyor")) return 0;
+
+            let temiz = text.toString().replace(/[₺$\s]/g, '').trim();
+
+            if (temiz === "---" || temiz === "") return 0;
+
+            let noktasiz = temiz.replace(/\./g, '');
+            let sayiFormati = noktasiz.replace(',', '.');
+
+            let sonuc = parseFloat(sayiFormati);
+            return isNaN(sonuc) ? 0 : sonuc;
         }
 
         function calcDoviz() {
-            let m = document.getElementById('calc-miktar').value;
-            let b = document.getElementById('calc-birim').value;
-            let kur = temizleVeSayiyaCevir(document.getElementById('val-' + b).textContent);
-            if (kur > 0 && m) {
-                let s = m * kur;
-                document.getElementById('doviz-sonuc-text').innerText = m + " " + b + " = " + s.toLocaleString('tr-TR') + " TL";
+            let miktar = document.getElementById('calc-miktar').value;
+            let birim = document.getElementById('calc-birim').value;
+            let el = document.getElementById('val-' + birim);
+
+            if (miktar && el) {
+                // innerText yerine textContent kullanıldı (GİZLİ DEPO ÇÖZÜMÜ)
+                let kur = temizleVeSayiyaCevir(el.textContent);
+                if (kur === 0) {
+                     alert("Piyasa verileri yükleniyor, lütfen 1-2 saniye bekleyip tekrar deneyin.");
+                     return;
+                }
+                let sonuc = miktar * kur;
+                document.getElementById('doviz-sonuc-text').innerText = miktar + " " + birim + " = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
                 document.getElementById('doviz-sonuc-box').style.display = 'block';
             }
         }
 
         function calcAltin() {
-            let m = document.getElementById('calc-altin-miktar').value;
-            let t = document.getElementById('calc-altin-turu').value;
-            let fiyat = temizleVeSayiyaCevir(document.getElementById('val-' + t).textContent);
-            if (fiyat > 0 && m) {
-                let s = m * fiyat;
-                document.getElementById('altin-sonuc-text').innerText = m + " Adet = " + s.toLocaleString('tr-TR') + " TL";
+            let miktar = document.getElementById('calc-altin-miktar').value;
+            let tur = document.getElementById('calc-altin-turu').value;
+            let el = document.getElementById('val-' + tur);
+
+            if (miktar && el) {
+                // innerText yerine textContent kullanıldı (GİZLİ DEPO ÇÖZÜMÜ)
+                let fiyat = temizleVeSayiyaCevir(el.textContent);
+                if (fiyat === 0) {
+                    alert("Piyasa verileri yükleniyor, lütfen 1-2 saniye bekleyip tekrar deneyin.");
+                    return;
+                }
+                let sonuc = miktar * fiyat;
+                let birimText = (tur === "GRAM") ? " Gram" : " Adet";
+                document.getElementById('altin-sonuc-text').innerText = miktar + birimText + " = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
                 document.getElementById('altin-sonuc-box').style.display = 'block';
             }
         }
 
         function guncelle() {
-            fetch('/api/fiyatlar').then(r => r.json()).then(data => {
-                const v = {...data.kurlar, ...data.altin};
-                Object.keys(v).forEach(k => {
-                    let el = document.getElementById('val-' + k);
-                    if(el) el.textContent = v[k] + (k.includes('ONS') ? '' : ' ₺');
-                });
-            });
+            fetch('/api/fiyatlar')
+                .then(r => r.json())
+                .then(data => {
+                    const veriler = {...data.kurlar, ...data.altin};
+
+                    Object.keys(veriler).forEach(key => {
+                        let el = document.getElementById('val-' + key);
+                        if(el) {
+                            let yeniFiyatStr = veriler[key];
+
+                            if(yeniFiyatStr === "---") return;
+
+                            let yeniFiyatNum = temizleVeSayiyaCevir(yeniFiyatStr);
+
+                            if (!(key in eskiFiyatlar)) {
+                                eskiFiyatlar[key] = yeniFiyatNum;
+                            }
+
+                            let eskiFiyatNum = eskiFiyatlar[key];
+
+                            if (!el.closest('#gizli-depo')) {
+                                let ok = "";
+                                el.classList.remove('price-up', 'price-down');
+
+                                if (yeniFiyatNum > eskiFiyatNum) {
+                                    ok = ' ▲';
+                                    el.classList.add('price-up');
+                                } else if (yeniFiyatNum < eskiFiyatNum) {
+                                    ok = ' ▼';
+                                    el.classList.add('price-down');
+                                }
+
+                                let dolarMi = (key === 'ONS' || key === 'ONS-GUMUS');
+                                let birimSembol = dolarMi ? "" : " ₺";
+                                let gosterilecekMetin = (dolarMi ? "$" : "") + yeniFiyatStr + birimSembol;
+                                el.innerHTML = gosterilecekMetin + ok;
+
+                                if (yeniFiyatNum !== eskiFiyatNum) {
+                                    el.classList.add('update-flash');
+                                    setTimeout(() => el.classList.remove('update-flash'), 1000);
+                                }
+                            } else {
+                                // innerText yerine textContent kullanıldı
+                                el.textContent = yeniFiyatStr;
+                            }
+
+                            eskiFiyatlar[key] = yeniFiyatNum;
+                        }
+                    });
+                })
+                .catch(err => console.error("Veri çekme hatası:", err));
         }
-        setInterval(guncelle, 5000);
+
         guncelle();
+        setInterval(guncelle, 5000);
     </script>
 </body>
 </html>
