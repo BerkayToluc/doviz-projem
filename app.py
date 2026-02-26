@@ -27,7 +27,6 @@ def verileri_kazi():
         kurlar["USD"] = doviz_bul("USD")
         kurlar["EUR"] = doviz_bul("EUR")
         kurlar["GBP"] = doviz_bul("GBP")
-        kurlar["CHF"] = doviz_bul("CHF")
         altin["GRAM"] = doviz_bul("gram-altin")
         altin["CEYREK"] = doviz_bul("ceyrek-altin")
         altin["YARIM"] = doviz_bul("yarim-altin")
@@ -46,7 +45,7 @@ def verileri_kazi():
         except:
             kurlar["JPY"] = "---"
 
-        # --- 3. KAYNAK: PARATIC (ONS ALTIN, GÜMÜŞ ONS, PLN) ---
+        # --- 3. KAYNAK: PARATIC (ONS ALTIN, GÜMÜŞ ONS, PLN, CHF) ---
         try:
             res_p_ons = requests.get("https://piyasa.paratic.com/altin/ons/", headers=headers, timeout=5)
             soup_p_ons = BeautifulSoup(res_p_ons.content, "html.parser")
@@ -70,6 +69,15 @@ def verileri_kazi():
             kurlar["PLN"] = pln_el.text.strip().split('\n')[0] if pln_el else "---"
         except:
             kurlar["PLN"] = "---"
+
+        # İŞTE İSVİÇRE FRANGI BURADA
+        try:
+            res_p_chf = requests.get("https://piyasa.paratic.com/doviz/isvicre-frangi/", headers=headers, timeout=5)
+            soup_p_chf = BeautifulSoup(res_p_chf.content, "html.parser")
+            chf_el = soup_p_chf.find("div", {"class": "price"})
+            kurlar["CHF"] = chf_el.text.strip().split('\n')[0] if chf_el else "---"
+        except:
+            kurlar["CHF"] = "---"
 
         # --- 4. YEDEKLEME (ALTIN.IN) ---
         if altin.get("ONS-GUMUS") == "---" or not altin.get("ONS-GUMUS"):
@@ -98,9 +106,10 @@ def verileri_kazi():
 
 @app.route("/")
 def index():
-    # ÇÖZÜM BURADA: Render'ın botu kontrol ettiğinde beklemesin diye kazıma işlemini sildik.
-    # HTML anında yüklenir, JS arkadan API'ye vurup verileri doldurur.
-    return render_template("index.html", kurlar=son_veriler.get("kurlar", {}), altin_fiyatlari=son_veriler.get("altin", {}))
+    # Sayfa ilk açıldığında boş sözlükler yollayarak 500 hatasını engelliyoruz
+    k = son_veriler.get("kurlar") if son_veriler.get("kurlar") else {}
+    a = son_veriler.get("altin") if son_veriler.get("altin") else {}
+    return render_template("index.html", kurlar=k, altin_fiyatlari=a)
 
 @app.route("/api/fiyatlar")
 def api_fiyatlar():
