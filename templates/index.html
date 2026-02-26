@@ -29,7 +29,6 @@
             100% { opacity: 1; }
         }
 
-        /* Yükleniyor yazısı için şık bir stil */
         .loading-text { font-size: 1rem; color: #888888; font-weight: 400; font-style: italic; }
     </style>
 </head>
@@ -48,6 +47,7 @@
                         <option value="USD">Dolar (USD)</option>
                         <option value="EUR">Euro (EUR)</option>
                         <option value="GBP">Sterlin (GBP)</option>
+                        <option value="CHF">İsviçre Frangı (CHF)</option>
                         <option value="JPY">Japon Yeni (JPY)</option>
                         <option value="PLN">Polonya Zlotisi (PLN)</option>
                     </select>
@@ -78,7 +78,7 @@
             <div class="col-md-6">
                <h3 class="text-bright mb-3">📈 Canlı Piyasa Verileri</h3>
 
-                {% for kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
+                {% for kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('CHF','CHF / TRY','ch'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
                 <div class="card p-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
@@ -134,12 +134,10 @@
             if(!text || text === "0" || text === "---" || text.includes("Bağlanıyor")) return 0;
 
             let temiz = text.toString().replace(/[₺$\s]/g, '').trim();
-
             if (temiz === "---" || temiz === "") return 0;
 
             let noktasiz = temiz.replace(/\./g, '');
             let sayiFormati = noktasiz.replace(',', '.');
-
             let sonuc = parseFloat(sayiFormati);
             return isNaN(sonuc) ? 0 : sonuc;
         }
@@ -150,14 +148,15 @@
             let el = document.getElementById('val-' + birim);
 
             if (miktar && el) {
-                // innerText yerine textContent kullanıldı (GİZLİ DEPO ÇÖZÜMÜ)
                 let kur = temizleVeSayiyaCevir(el.textContent);
                 if (kur === 0) {
                      alert("Piyasa verileri yükleniyor, lütfen 1-2 saniye bekleyip tekrar deneyin.");
                      return;
                 }
                 let sonuc = miktar * kur;
-                document.getElementById('doviz-sonuc-text').innerText = miktar + " " + birim + " = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+                document.getElementById('doviz-sonuc-text').innerText =
+                    miktar + " " + birim + " = " +
+                    sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
                 document.getElementById('doviz-sonuc-box').style.display = 'block';
             }
         }
@@ -168,7 +167,6 @@
             let el = document.getElementById('val-' + tur);
 
             if (miktar && el) {
-                // innerText yerine textContent kullanıldı (GİZLİ DEPO ÇÖZÜMÜ)
                 let fiyat = temizleVeSayiyaCevir(el.textContent);
                 if (fiyat === 0) {
                     alert("Piyasa verileri yükleniyor, lütfen 1-2 saniye bekleyip tekrar deneyin.");
@@ -176,7 +174,9 @@
                 }
                 let sonuc = miktar * fiyat;
                 let birimText = (tur === "GRAM") ? " Gram" : " Adet";
-                document.getElementById('altin-sonuc-text').innerText = miktar + birimText + " = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+                document.getElementById('altin-sonuc-text').innerText =
+                    miktar + birimText + " = " +
+                    sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
                 document.getElementById('altin-sonuc-box').style.display = 'block';
             }
         }
@@ -191,7 +191,6 @@
                         let el = document.getElementById('val-' + key);
                         if(el) {
                             let yeniFiyatStr = veriler[key];
-
                             if(yeniFiyatStr === "---") return;
 
                             let yeniFiyatNum = temizleVeSayiyaCevir(yeniFiyatStr);
@@ -216,7 +215,9 @@
 
                                 let dolarMi = (key === 'ONS' || key === 'ONS-GUMUS');
                                 let birimSembol = dolarMi ? "" : " ₺";
-                                let gosterilecekMetin = (dolarMi ? "$" : "") + yeniFiyatStr + birimSembol;
+                                let gosterilecekMetin =
+                                    (dolarMi ? "$" : "") + yeniFiyatStr + birimSembol;
+
                                 el.innerHTML = gosterilecekMetin + ok;
 
                                 if (yeniFiyatNum !== eskiFiyatNum) {
@@ -224,7 +225,6 @@
                                     setTimeout(() => el.classList.remove('update-flash'), 1000);
                                 }
                             } else {
-                                // innerText yerine textContent kullanıldı
                                 el.textContent = yeniFiyatStr;
                             }
 

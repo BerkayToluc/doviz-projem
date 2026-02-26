@@ -27,6 +27,7 @@ def verileri_kazi():
         kurlar["USD"] = doviz_bul("USD")
         kurlar["EUR"] = doviz_bul("EUR")
         kurlar["GBP"] = doviz_bul("GBP")
+        kurlar["CHF"] = doviz_bul("CHF")
         altin["GRAM"] = doviz_bul("gram-altin")
         altin["CEYREK"] = doviz_bul("ceyrek-altin")
         altin["YARIM"] = doviz_bul("yarim-altin")
