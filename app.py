@@ -66,7 +66,8 @@ def verileri_kazi():
             res_p_pln = requests.get("https://piyasa.paratic.com/doviz/polonya-zlotisi/", headers=headers, timeout=5)
             soup_p_pln = BeautifulSoup(res_p_pln.content, "html.parser")
             pln_el = soup_p_pln.find("div", {"class": "price"})
-            kurlar["PLN"] = pln_el.text.strip().split('\n')[0] if pln_el else "---"
+            # DÜZELTME: Nokta virgüle çevrildi
+            kurlar["PLN"] = pln_el.text.strip().split('\n')[0].replace('.', ',') if pln_el else "---"
         except:
             kurlar["PLN"] = "---"
 
@@ -75,7 +76,8 @@ def verileri_kazi():
             res_p_chf = requests.get("https://piyasa.paratic.com/doviz/isvicre-frangi/", headers=headers, timeout=5)
             soup_p_chf = BeautifulSoup(res_p_chf.content, "html.parser")
             chf_el = soup_p_chf.find("div", {"class": "price"})
-            kurlar["CHF"] = chf_el.text.strip().split('\n')[0] if chf_el else "---"
+            # DÜZELTME: Nokta virgüle çevrildi
+            kurlar["CHF"] = chf_el.text.strip().split('\n')[0].replace('.', ',') if chf_el else "---"
         except:
             kurlar["CHF"] = "---"
 
