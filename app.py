@@ -16,25 +16,52 @@ def verileri_kazi():
     altin = {}
 
     try:
-        # --- 1. KAYNAK: DOVIZ.COM (Temel Kurlar ve Altınlar) ---
+        # --- 1. KAYNAK: DOVIZ.COM (Sadece Ana Kurlar ve Gram Altın İçin) ---
         res_doviz = requests.get("https://www.doviz.com", headers=headers, timeout=8)
         soup_doviz = BeautifulSoup(res_doviz.content, "html.parser")
 
         def doviz_bul(key):
             el = soup_doviz.find("span", {"data-socket-key": key})
-            return el.text.strip() if el else None
+            if el:
+                val = el.text.strip()
+                return val if "%" not in val else None
+            return None
 
         kurlar["USD"] = doviz_bul("USD")
         kurlar["EUR"] = doviz_bul("EUR")
         kurlar["GBP"] = doviz_bul("GBP")
         altin["GRAM"] = doviz_bul("gram-altin")
-        altin["CEYREK"] = doviz_bul("ceyrek-altin")
-        altin["YARIM"] = doviz_bul("yarim-altin")
-        altin["TAM"] = doviz_bul("tam-altin")
-        altin["CUMHURIYET"] = doviz_bul("cumhuriyet-altini")
-        altin["ATA"] = doviz_bul("ata-altini")
 
-        # --- 2. KAYNAK: MYNET (Japon Yeni) ---
+        # --- 2. KAYNAK: CANLI ALTIN FİYATLARI (Doviz.com'da eksik olan altınlar için) ---
+        try:
+            res_altin = requests.get("https://canlialtinfiyatlari.com/", headers=headers, timeout=8)
+            soup_altin = BeautifulSoup(res_altin.content, "html.parser")
+
+            def altin_sec(aranan_isim):
+                # İçinde 'Çeyrek' vb. geçen metni bul
+                isim_hucresi = soup_altin.find(["td", "a", "div"], string=lambda text: text and aranan_isim in text)
+                if isim_hucresi:
+                    # O ismin bulunduğu satırı (tr) tespit et
+                    satir = isim_hucresi.find_parent("tr")
+                    if satir:
+                        hucreler = satir.find_all("td")
+                        # 2. veya 1. indexteki fiyatı al (Satış/Alış)
+                        if len(hucreler) >= 2:
+                            index = 2 if len(hucreler) > 2 else 1
+                            # İçindeki gereksiz 'TL' yazılarını temizle
+                            fiyat = hucreler[index].text.replace("TL", "").strip()
+                            return fiyat if fiyat else None
+                return None
+
+            altin["CEYREK"] = altin_sec("Çeyrek")
+            altin["YARIM"] = altin_sec("Yarım")
+            altin["TAM"] = altin_sec("Tam")
+            altin["CUMHURIYET"] = altin_sec("Cumhuriyet")
+            altin["ATA"] = altin_sec("Ata")
+        except Exception as e:
+            print(f"Altın Tablosu Çekilemedi: {e}")
+
+        # --- 3. KAYNAK: MYNET (Japon Yeni) ---
         try:
             res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=8)
             soup_m = BeautifulSoup(res_m.content, "html.parser")
@@ -45,7 +72,7 @@ def verileri_kazi():
         except:
             kurlar["JPY"] = "---"
 
-        # --- 3. KAYNAK: PARATIC (ONS ALTIN, GÜMÜŞ ONS, PLN, CHF) ---
+        # --- 4. KAYNAK: PARATIC (ONS ALTIN, GÜMÜŞ ONS, PLN, CHF) ---
         try:
             res_p_ons = requests.get("https://piyasa.paratic.com/altin/ons/", headers=headers, timeout=5)
             soup_p_ons = BeautifulSoup(res_p_ons.content, "html.parser")
@@ -58,7 +85,8 @@ def verileri_kazi():
             res_p_gumus = requests.get("https://piyasa.paratic.com/forex/emtia/gumus-ons/", headers=headers, timeout=5)
             soup_p_gumus = BeautifulSoup(res_p_gumus.content, "html.parser")
             gumus_el = soup_p_gumus.find("div", {"class": "price"})
-            altin["ONS-GUMUS"] = gumus_el.text.strip().replace("$", "").replace(" ", "").split('\n')[0] if gumus_el else "---"
+            altin["ONS-GUMUS"] = gumus_el.text.strip().replace("$", "").replace(" ", "").split('\n')[
+                0] if gumus_el else "---"
         except:
             altin["ONS-GUMUS"] = "---"
 
@@ -66,23 +94,20 @@ def verileri_kazi():
             res_p_pln = requests.get("https://piyasa.paratic.com/doviz/polonya-zlotisi/", headers=headers, timeout=5)
             soup_p_pln = BeautifulSoup(res_p_pln.content, "html.parser")
             pln_el = soup_p_pln.find("div", {"class": "price"})
-            # DÜZELTME: Nokta virgüle çevrildi
             kurlar["PLN"] = pln_el.text.strip().split('\n')[0].replace('.', ',') if pln_el else "---"
         except:
             kurlar["PLN"] = "---"
 
-        # İŞTE İSVİÇRE FRANGI BURADA
         try:
             res_p_chf = requests.get("https://piyasa.paratic.com/doviz/isvicre-frangi/", headers=headers, timeout=5)
             soup_p_chf = BeautifulSoup(res_p_chf.content, "html.parser")
             chf_el = soup_p_chf.find("div", {"class": "price"})
-            # DÜZELTME: Nokta virgüle çevrildi
             kurlar["CHF"] = chf_el.text.strip().split('\n')[0].replace('.', ',') if chf_el else "---"
         except:
             kurlar["CHF"] = "---"
 
-        # --- 4. YEDEKLEME (ALTIN.IN) ---
-        if altin.get("ONS-GUMUS") == "---" or not altin.get("ONS-GUMUS"):
+        # --- 5. YEDEKLEME (ALTIN.IN) ---
+        if not altin.get("ONS-GUMUS") or altin["ONS-GUMUS"] == "---":
             try:
                 res_ain = requests.get("https://www.altin.in", headers=headers, timeout=5)
                 soup_ain = BeautifulSoup(res_ain.content, "html.parser")
@@ -94,8 +119,9 @@ def verileri_kazi():
 
         # --- TEMİZLİK VE BELLEK GÜNCELLEME ---
         for d in [kurlar, altin]:
-            for k, v in d.items():
-                if not v or v == "0" or v == "0,00" or "%" in str(v):
+            # Sözlüğü güncellerken hata almamak için list(d.items()) kullanıyoruz
+            for k, v in list(d.items()):
+                if v is None or v == "" or v == "0" or v == "0,00" or v == "None":
                     d[k] = "---"
 
         son_veriler["kurlar"] = kurlar
@@ -103,21 +129,33 @@ def verileri_kazi():
         return kurlar, altin
 
     except Exception as e:
-        print(f"Genel Hata: {e}")
+        print(f"Veri Kazıma Hatası: {e}")
         return son_veriler.get("kurlar", {}), son_veriler.get("altin", {})
+
 
 @app.route("/")
 def index():
-    # Sayfa ilk açıldığında boş sözlükler yollayarak 500 hatasını engelliyoruz
-    k = son_veriler.get("kurlar") if son_veriler.get("kurlar") else {}
-    a = son_veriler.get("altin") if son_veriler.get("altin") else {}
-    return render_template("index.html", kurlar=k, altin_fiyatlari=a)
+    # Eğer bellek boşsa bir kereye mahsus veriyi çek
+    if not son_veriler["kurlar"]:
+        verileri_kazi()
+
+    return render_template("index.html",
+                           kurlar=son_veriler["kurlar"],
+                           altin_fiyatlari=son_veriler["altin"])
+
 
 @app.route("/api/fiyatlar")
 def api_fiyatlar():
     k, a = verileri_kazi()
     return jsonify({"kurlar": k, "altin": a})
 
+
 if __name__ == "__main__":
+    # Uygulama başlar başlamaz ilk veriyi çek
+    try:
+        verileri_kazi()
+    except:
+        pass
+
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)

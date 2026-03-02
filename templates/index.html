@@ -31,6 +31,11 @@
         }
 
         .loading-text { font-size: 1rem; color: #888888; font-weight: 400; font-style: italic; }
+
+        /* Sekme Tasarımı */
+        .nav-pills .nav-link { color: #888; border-radius: 10px; margin: 0 5px; transition: all 0.3s; font-weight: bold; }
+        .nav-pills .nav-link.active { background-color: #333; color: #FFD700; border: 1px solid #FFD700; }
+        .nav-pills .nav-link:hover:not(.active) { color: #FFF; background-color: #222; }
     </style>
 </head>
 <body class="p-4">
@@ -42,81 +47,107 @@
             </h1>
         </div>
 
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card p-4 shadow">
-                    <h3 class="text-bright mb-3">💱 Döviz Hesapla</h3>
-                    <input type="number" id="calc-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Miktar Giriniz">
-                    <select id="calc-birim" class="form-select mb-3 bg-dark text-white border-secondary">
-                        <option value="USD">Dolar (USD)</option>
-                        <option value="EUR">Euro (EUR)</option>
-                        <option value="GBP">Sterlin (GBP)</option>
-                        <option value="CHF">İsviçre Frangı (CHF)</option>
-                        <option value="JPY">Japon Yeni (JPY)</option>
-                        <option value="PLN">Polonya Zlotisi (PLN)</option>
-                    </select>
-                    <button type="button" class="btn btn-primary w-100 fw-bold" onclick="calcDoviz()">TL'YE ÇEVİR</button>
-                    <div id="doviz-sonuc-box" class="alert alert-info mt-3 bg-primary text-white border-0" style="display:none;">
-                        <span id="doviz-sonuc-text"></span>
-                    </div>
-                </div>
+        <ul class="nav nav-pills justify-content-center mb-5" id="pills-tab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active px-4 py-2" id="pills-doviz-tab" data-bs-toggle="pill" data-bs-target="#pills-doviz" type="button" role="tab" aria-controls="pills-doviz" aria-selected="true">💱 DÖVİZ PİYASASI</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link px-4 py-2" id="pills-altin-tab" data-bs-toggle="pill" data-bs-target="#pills-altin" type="button" role="tab" aria-controls="pills-altin" aria-selected="false">🏆 ALTIN PİYASASI</button>
+            </li>
+        </ul>
 
-                <div class="card p-4 shadow">
-                    <h3 class="text-bright mb-3 text-warning">✨ Altın Hesapla</h3>
-                    <input type="number" id="calc-altin-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Adet veya Gram">
-                    <select id="calc-altin-turu" class="form-select mb-3 bg-dark text-white border-secondary">
-                        <option value="GRAM">Gram Altın</option>
-                        <option value="CEYREK">Çeyrek Altın</option>
-                        <option value="YARIM">Yarım Altın</option>
-                        <option value="TAM">Tam Altın</option>
-                        <option value="CUMHURIYET">Cumhuriyet Altını</option>
-                        <option value="ATA">Ata Altını</option>
-                    </select>
-                    <button type="button" class="btn btn-warning w-100 fw-bold" onclick="calcAltin()">HESAPLA</button>
-                    <div id="altin-sonuc-box" class="alert alert-warning mt-3 bg-warning text-dark border-0" style="display:none;">
-                        <span id="altin-sonuc-text"></span>
+        <div class="tab-content" id="pills-tabContent">
+
+            <div class="tab-pane fade show active" id="pills-doviz" role="tabpanel" aria-labelledby="pills-doviz-tab">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card p-4 shadow">
+                            <h3 class="text-bright mb-3">💱 Döviz Hesapla</h3>
+                            <input type="number" id="calc-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Miktar Giriniz">
+                            <select id="calc-birim" class="form-select mb-3 bg-dark text-white border-secondary">
+                                <option value="USD">Dolar (USD)</option>
+                                <option value="EUR">Euro (EUR)</option>
+                                <option value="GBP">Sterlin (GBP)</option>
+                                <option value="CHF">İsviçre Frangı (CHF)</option>
+                                <option value="JPY">Japon Yeni (JPY)</option>
+                                <option value="PLN">Polonya Zlotisi (PLN)</option>
+                            </select>
+                            <button type="button" class="btn btn-primary w-100 fw-bold" onclick="calcDoviz()">TL'YE ÇEVİR</button>
+                            <div id="doviz-sonuc-box" class="alert alert-info mt-3 bg-primary text-white border-0" style="display:none;">
+                                <span id="doviz-sonuc-text"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h3 class="text-bright mb-3">📈 Canlı Piyasa Verileri</h3>
+                        {% for doviz_kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('CHF','CHF / TRY','ch'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
+                        <div class="card p-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
+                                <span class="price-tag" id="val-{{doviz_kod}}">
+                                    {% if kurlar.get(doviz_kod) %}{{ kurlar.get(doviz_kod) }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-6">
-               <h3 class="text-bright mb-3">📈 Canlı Piyasa Verileri</h3>
-
-                {% for kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('CHF','CHF / TRY','ch'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
-                <div class="card p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
-                        <span class="price-tag" id="val-{{kod}}">
-                            {% if kurlar.get(kod) %}{{ kurlar.get(kod) }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
-                        </span>
+            <div class="tab-pane fade" id="pills-altin" role="tabpanel" aria-labelledby="pills-altin-tab">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card p-4 shadow">
+                            <h3 class="text-bright mb-3 text-warning">✨ Altın Hesapla</h3>
+                            <input type="number" id="calc-altin-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Adet veya Gram">
+                            <select id="calc-altin-turu" class="form-select mb-3 bg-dark text-white border-secondary">
+                                <option value="GRAM">Gram Altın</option>
+                                <option value="CEYREK">Çeyrek Altın</option>
+                                <option value="YARIM">Yarım Altın</option>
+                                <option value="TAM">Tam Altın</option>
+                                <option value="CUMHURIYET">Cumhuriyet Altını</option>
+                                <option value="ATA">Ata Altını</option>
+                            </select>
+                            <button type="button" class="btn btn-warning w-100 fw-bold" onclick="calcAltin()">HESAPLA</button>
+                            <div id="altin-sonuc-box" class="alert alert-warning mt-3 bg-warning text-dark border-0" style="display:none;">
+                                <span id="altin-sonuc-text"></span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                {% endfor %}
 
-                <div class="card p-3 border-warning">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-warning fs-5">🏆 Gram Altın</span>
-                        <span class="price-tag" id="val-GRAM">
-                            {% if altin_fiyatlari.get('GRAM') %}{{ altin_fiyatlari.get('GRAM') }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
-                        </span>
-                    </div>
-                </div>
+                    <div class="col-md-6">
+                        <h3 class="text-warning mb-3">🏆 Detaylı Altın Fiyatları</h3>
 
-                <div class="card p-3 border-info">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-info fs-5">🌍 Ons Altın (XAU)</span>
-                        <span class="price-tag" id="val-ONS">
-                            {% if altin_fiyatlari.get('ONS') %}${{ altin_fiyatlari.get('ONS') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
-                        </span>
-                    </div>
-                </div>
+                        <div class="card p-3 border-warning">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-warning fs-5">🏆 Gram Altın</span>
+                                <span class="price-tag" id="val-GRAM">{% if altin_fiyatlari.get('GRAM') %}{{ altin_fiyatlari.get('GRAM') }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
+                            </div>
+                        </div>
 
-                <div class="card p-3" style="border: 1px solid #C0C0C0;">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span style="color: #C0C0C0;" class="fs-5">🥈 Ons Gümüş (XAG)</span>
-                        <span class="price-tag" id="val-ONS-GUMUS">
-                            {% if altin_fiyatlari.get('ONS-GUMUS') %}${{ altin_fiyatlari.get('ONS-GUMUS') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
-                        </span>
+                        <div class="card p-3 border-info">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-info fs-5">🌍 Ons Altın (XAU)</span>
+                                <span class="price-tag" id="val-ONS">{% if altin_fiyatlari.get('ONS') %}${{ altin_fiyatlari.get('ONS') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
+                            </div>
+                        </div>
+
+                        {% for altin_kod, isim in [('CEYREK', 'Çeyrek Altın'), ('YARIM', 'Yarım Altın'), ('TAM', 'Tam Altın'), ('CUMHURIYET', 'Cumhuriyet Altını'), ('ATA', 'Ata Altını')] %}
+                        <div class="card p-3" style="border: 1px solid #555;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-bright fs-5">🟡 {{isim}}</span>
+                                <span class="price-tag" id="val-{{altin_kod}}">{% if altin_fiyatlari.get(altin_kod) %}{{ altin_fiyatlari.get(altin_kod) }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <div class="card p-3" style="border: 1px solid #C0C0C0;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span style="color: #C0C0C0;" class="fs-5">🥈 Ons Gümüş (XAG)</span>
+                                <span class="price-tag" id="val-ONS-GUMUS">{% if altin_fiyatlari.get('ONS-GUMUS') %}${{ altin_fiyatlari.get('ONS-GUMUS') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -126,95 +157,38 @@
             <div class="col-12">
                 <div class="card p-4 shadow border-secondary">
                     <h3 class="text-bright mb-3">📊 Canlı Piyasa Grafikleri</h3>
-
                     <div class="tradingview-widget-container">
                         <div class="tradingview-widget-container__widget"></div>
                         <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js" async>
                         {
                         "symbols": [
-                            [
-                            "Dolar / TL",
-                            "FX_IDC:USDTRY|1D"
-                            ],
-                            [
-                            "Euro / TL",
-                            "FX_IDC:EURTRY|1D"
-                            ],
-                            [
-                            "Sterlin / TL",
-                            "FX_IDC:GBPTRY|1D"
-                            ],
-                            [
-                            "İsviçre Frangı / TL",
-                            "FX_IDC:CHFTRY|1D"
-                            ],
-                            [
-                            "Ons Altın ($)",
-                            "OANDA:XAUUSD|1D"
-                            ],
-                            [
-                            "Ons Gümüş ($)",
-                            "OANDA:XAGUSD|1D"
-                            ]
+                            ["Dolar / TL", "FX_IDC:USDTRY|1D"],
+                            ["Euro / TL", "FX_IDC:EURTRY|1D"],
+                            ["Sterlin / TL", "FX_IDC:GBPTRY|1D"],
+                            ["İsviçre Frangı / TL", "FX_IDC:CHFTRY|1D"],
+                            ["Ons Altın ($)", "OANDA:XAUUSD|1D"],
+                            ["Ons Gümüş ($)", "OANDA:XAGUSD|1D"]
                         ],
-                        "chartOnly": false,
-                        "width": "100%",
-                        "height": 400,
-                        "locale": "tr",
-                        "colorTheme": "dark",
-                        "autosize": false,
-                        "showVolume": false,
-                        "showMA": false,
-                        "hideDateRanges": false,
-                        "hideMarketStatus": false,
-                        "hideSymbolLogo": false,
-                        "scalePosition": "right",
-                        "scaleMode": "Normal",
-                        "fontFamily": "Segoe UI, sans-serif",
-                        "fontSize": "10",
-                        "noTimeScale": false,
-                        "valuesTracking": "1",
-                        "changeMode": "price-and-percent",
-                        "chartType": "area",
-                        "maLineColor": "#2962FF",
-                        "maLineWidth": 1,
-                        "maLength": 9,
-                        "lineWidth": 2,
-                        "lineType": 0,
-                        "dateRanges": [
-                            "1d|1",
-                            "1w|15",
-                            "1m|30",
-                            "3m|60",
-                            "12m|1D",
-                            "60m|1W",
-                            "all|1M"
-                        ]
+                        "chartOnly": false, "width": "100%", "height": 400, "locale": "tr", "colorTheme": "dark", "autosize": false, "showVolume": false, "showMA": false, "hideDateRanges": false, "hideMarketStatus": false, "hideSymbolLogo": false, "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "Segoe UI, sans-serif", "fontSize": "10", "noTimeScale": false, "valuesTracking": "1", "changeMode": "price-and-percent", "chartType": "area", "maLineColor": "#2962FF", "maLineWidth": 1, "maLength": 9, "lineWidth": 2, "lineType": 0,
+                        "dateRanges": ["1d|1", "1w|15", "1m|30", "3m|60", "12m|1D", "60m|1W", "all|1M"]
                         }
                         </script>
                     </div>
-                    </div>
+                </div>
             </div>
         </div>
-        </div>
-
-    <div id="gizli-depo" style="display: none;">
-        <span id="val-CEYREK">{{ altin_fiyatlari.get('CEYREK', '0') }}</span>
-        <span id="val-YARIM">{{ altin_fiyatlari.get('YARIM', '0') }}</span>
-        <span id="val-TAM">{{ altin_fiyatlari.get('TAM', '0') }}</span>
-        <span id="val-CUMHURIYET">{{ altin_fiyatlari.get('CUMHURIYET', '0') }}</span>
-        <span id="val-ATA">{{ altin_fiyatlari.get('ATA', '0') }}</span>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         let eskiFiyatlar = {};
 
         function temizleVeSayiyaCevir(text) {
             if(!text || text === "0" || text === "---" || text.includes("Bağlanıyor")) return 0;
-
-            let temiz = text.toString().replace(/[₺$\s]/g, '').trim();
+            // Ok işaretlerini temizlemek için regex güncellendi
+            let temiz = text.toString().replace(/[₺$\s▲▼]/g, '').trim();
             if (temiz === "---" || temiz === "") return 0;
-
             let noktasiz = temiz.replace(/\./g, '');
             let sayiFormati = noktasiz.replace(',', '.');
             let sonuc = parseFloat(sayiFormati);
@@ -280,31 +254,27 @@
 
                             let eskiFiyatNum = eskiFiyatlar[key];
 
-                            if (!el.closest('#gizli-depo')) {
-                                let ok = "";
-                                el.classList.remove('price-up', 'price-down');
+                            // Artık tüm elemanlar ok işareti ve flaş alacak (gizli depo yok)
+                            let ok = "";
+                            el.classList.remove('price-up', 'price-down');
 
-                                if (yeniFiyatNum > eskiFiyatNum) {
-                                    ok = ' ▲';
-                                    el.classList.add('price-up');
-                                } else if (yeniFiyatNum < eskiFiyatNum) {
-                                    ok = ' ▼';
-                                    el.classList.add('price-down');
-                                }
+                            if (yeniFiyatNum > eskiFiyatNum) {
+                                ok = ' ▲';
+                                el.classList.add('price-up');
+                            } else if (yeniFiyatNum < eskiFiyatNum) {
+                                ok = ' ▼';
+                                el.classList.add('price-down');
+                            }
 
-                                let dolarMi = (key === 'ONS' || key === 'ONS-GUMUS');
-                                let birimSembol = dolarMi ? "" : " ₺";
-                                let gosterilecekMetin =
-                                    (dolarMi ? "$" : "") + yeniFiyatStr + birimSembol;
+                            let dolarMi = (key === 'ONS' || key === 'ONS-GUMUS');
+                            let birimSembol = dolarMi ? "" : " ₺";
+                            let gosterilecekMetin = (dolarMi ? "$" : "") + yeniFiyatStr + birimSembol;
 
-                                el.innerHTML = gosterilecekMetin + ok;
+                            el.innerHTML = gosterilecekMetin + ok;
 
-                                if (yeniFiyatNum !== eskiFiyatNum) {
-                                    el.classList.add('update-flash');
-                                    setTimeout(() => el.classList.remove('update-flash'), 1000);
-                                }
-                            } else {
-                                el.textContent = yeniFiyatStr;
+                            if (yeniFiyatNum !== eskiFiyatNum) {
+                                el.classList.add('update-flash');
+                                setTimeout(() => el.classList.remove('update-flash'), 1000);
                             }
 
                             eskiFiyatlar[key] = yeniFiyatNum;
