@@ -108,7 +108,5 @@ def api_fiyatlar():
 
 
 if __name__ == "__main__":
-    # DİKKAT: Burada verileri_kazi() ÇAĞIRMIYORUZ.
-    # Render'ın 'Port Scan' yaparken Flask'ın saniyesinde cevap vermesi lazım.
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
