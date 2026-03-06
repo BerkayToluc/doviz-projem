@@ -5,58 +5,63 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-# --- HIZLI AÇILIŞ İÇİN BELLEK (CACHE) ---
 son_veriler = {"kurlar": {}, "altin": {}}
 
 
 def verileri_kazi():
     global son_veriler
+    # Daha profesyonel ve güncel bir kimlik
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+    }
     kurlar = {}
     altin = {}
 
     try:
-        # --- 1. KAYNAK: DOVIZ.COM (Çalışan Kısımlar - Dokunulmadı) ---
-        res_doviz = requests.get("https://www.doviz.com", headers=headers, timeout=8)
+        # --- 1. KAYNAK: DOVIZ.COM (Dolar, Euro, Gram Altın - Zaten Çalışıyor) ---
+        res_doviz = requests.get("https://www.doviz.com", headers=headers, timeout=10)
         soup_doviz = BeautifulSoup(res_doviz.content, "html.parser")
 
         def doviz_bul(key):
             el = soup_doviz.find("span", {"data-socket-key": key})
-            if el:
-                val = el.text.strip()
-                return val if "%" not in val else None
-            return None
+            return el.text.strip() if el else None
 
         kurlar["USD"] = doviz_bul("USD")
         kurlar["EUR"] = doviz_bul("EUR")
         kurlar["GBP"] = doviz_bul("GBP")
         altin["GRAM"] = doviz_bul("gram-altin")
 
-        # --- 2. KAYNAK: ALTIN.IN (403 VEREN PARATIC YERİNE BURADAN ALIYORUZ) ---
+        # --- 2. KAYNAK: HAREM ALTIN (ÇEYREK, YARIM, ATA İÇİN YENİ KAYNAK) ---
         try:
-            res_ain = requests.get("https://www.altin.in", headers=headers, timeout=8)
-            soup_ain = BeautifulSoup(res_ain.content, "html.parser")
+            res_harem = requests.get("https://www.haremaltin.com/canli-piyasalar/", headers=headers, timeout=10)
+            soup_harem = BeautifulSoup(res_harem.content, "html.parser")
 
-            def altin_in_cek(altin_id):
-                el = soup_ain.find("dfn", {"id": altin_id})
-                return el.text.strip() if el else "---"
+            # Harem Altın'da veriler genelde liste içindedir
+            def harem_bul(turu):
+                # Önce tüm liste öğelerini bulalım
+                items = soup_harem.find_all("li")
+                for item in items:
+                    name = item.find("span", {"class": "name"})
+                    if name and turu.lower() in name.text.lower():
+                        price = item.find("span", {"class": "price"})
+                        return price.text.strip() if price else None
+                return None
 
-            altin["CEYREK"] = altin_in_cek("dfn_ceyrek_altin")
-            altin["YARIM"] = altin_in_cek("dfn_yarim_altin")
-            altin["TAM"] = altin_in_cek("dfn_tam_altin")
-            altin["CUMHURIYET"] = altin_in_cek("dfn_cumhuriyet_altini")
-            altin["ATA"] = altin_in_cek("dfn_ata_altin")
+            altin["CEYREK"] = harem_bul("Çeyrek")
+            altin["YARIM"] = harem_bul("Yarım")
+            altin["TAM"] = harem_bul("Tam")
+            altin["ATA"] = harem_bul("Ata")
+            altin["CUMHURIYET"] = harem_bul("Cumhuriyet")
 
-            # Eğer Paratic'ten gelen ONS/GÜMÜŞ hata verirse buradan beslenecek
-            ons_yedek = altin_in_cek("dfn_ons_altin")
-            gumus_yedek = altin_in_cek("dfn_gumus_ons")
-        except:
-            pass
+            print("Harem Altın Verileri Çekildi!")
+        except Exception as e:
+            print(f"Harem Altın Hatası: {e}")
 
-        # --- 3. KAYNAK: MYNET (Çalışan Kısım - Dokunulmadı) ---
+        # --- 3. KAYNAK: MYNET (Japon Yeni) ---
         try:
-            res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=8)
+            res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=10)
             soup_m = BeautifulSoup(res_m.content, "html.parser")
             link = soup_m.find("a", href=lambda x: x and "japon-yeni" in x)
             if link:
@@ -65,31 +70,27 @@ def verileri_kazi():
         except:
             kurlar["JPY"] = "---"
 
-        # --- 4. KAYNAK: PARATIC (Sadece çalışan Ons/Döviz kısımları kaldı) ---
-        def paratic_tekil_cek(path):
+        # --- 4. KAYNAK: PARATIC (Ons, Gümüş vb. - Çalışanlar kalsın) ---
+        def paratic_cek(path):
             try:
-                res = requests.get(f"https://piyasa.paratic.com/{path}", headers=headers, timeout=5)
+                res = requests.get(f"https://piyasa.paratic.com/{path}", headers=headers, timeout=8)
                 if res.status_code == 200:
                     soup = BeautifulSoup(res.content, "html.parser")
                     el = soup.find("div", {"class": "price"})
-                    return el.text.strip().replace("$", "").replace(" ", "").split('\n')[0] if el else "---"
+                    return el.text.strip().replace("$", "").split('\n')[0] if el else "---"
                 return "---"
             except:
                 return "---"
 
-        altin["ONS"] = paratic_tekil_cek("altin/ons/")
-        altin["ONS-GUMUS"] = paratic_tekil_cek("forex/emtia/gumus-ons/")
-        kurlar["PLN"] = paratic_tekil_cek("doviz/polonya-zlotisi/").replace('.', ',')
-        kurlar["CHF"] = paratic_tekil_cek("doviz/isvicre-frangi/").replace('.', ',')
-
-        # Yedekleme Kontrolü (Eğer Paratic 403 verirse Altin.in verisini yaz)
-        if altin["ONS"] == "---" and 'ons_yedek' in locals(): altin["ONS"] = ons_yedek
-        if altin["ONS-GUMUS"] == "---" and 'gumus_yedek' in locals(): altin["ONS-GUMUS"] = gumus_yedek
+        altin["ONS"] = paratic_cek("altin/ons/")
+        altin["ONS-GUMUS"] = paratic_cek("forex/emtia/gumus-ons/")
+        kurlar["PLN"] = paratic_cek("doviz/polonya-zlotisi/").replace('.', ',')
+        kurlar["CHF"] = paratic_cek("doviz/isvicre-frangi/").replace('.', ',')
 
         # --- TEMİZLİK ---
         for d in [kurlar, altin]:
             for k, v in list(d.items()):
-                if v is None or v == "" or v == "0" or v == "0,00" or v == "None":
+                if v is None or v == "" or v == "0" or v == "---":
                     d[k] = "---"
 
         son_veriler["kurlar"] = kurlar
@@ -97,8 +98,8 @@ def verileri_kazi():
         return kurlar, altin
 
     except Exception as e:
-        print(f"Hata: {e}")
-        return son_veriler.get("kurlar", {}), son_veriler.get("altin", {})
+        print(f"Genel Kazıma Hatası: {e}")
+        return son_veriler["kurlar"], son_veriler["altin"]
 
 
 @app.route("/")
