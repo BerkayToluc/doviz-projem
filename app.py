@@ -4,7 +4,9 @@ from flask import Flask, render_template, jsonify
 from bs4 import BeautifulSoup
 from supabase import create_client, Client
 
-app = Flask(__name__)
+# SİHİRLİ DOKUNUŞ: Her şeyi tek bir 'app' objesinde birleştirdik!
+app = Flask(__name__, template_folder='templates', static_folder='static')
+
 SUPABASE_URL="https://ebyinbdxwjyhcmivtluq.supabase.co"
 SUPABASE_KEY = "ebyinbdxwjyhcmivtluq"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -19,8 +21,6 @@ DUSUK_FIYATLI_SEMBOLLER = ["DOGEUSDT", "XRPUSDT"]
 TARAYICI_BASLIGI = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
 }
-
-uygulama = Flask(__name__, template_folder='templates', static_folder='static')
 
 sonVeriler = {
     "kurlar": {"USD": VERI_YUKLENIYOR, "EUR": VERI_YUKLENIYOR, "GBP": VERI_YUKLENIYOR, "JPY": VERI_YUKLENIYOR, "PLN": VERI_YUKLENIYOR, "CHF": VERI_YUKLENIYOR},
@@ -122,17 +122,19 @@ def verileriCek():
     except Exception:
         return sonVeriler["kurlar"], sonVeriler["altin"], sonVeriler["kripto"]
 
-@uygulama.route("/")
+# Rotalar @app.route olarak düzeltildi
+@app.route("/")
 def anaSayfa():
     if sonVeriler["kurlar"].get("USD") == VERI_YUKLENIYOR:
         verileriCek()
     return render_template("index.html", kurlar=sonVeriler["kurlar"], altin_fiyatlari=sonVeriler["altin"], kripto_fiyatlari=sonVeriler["kripto"])
 
-@uygulama.route("/api/fiyatlar")
+@app.route("/api/fiyatlar")
 def apiFiyatlar():
     verileriCek()
     return jsonify(sonVeriler)
 
+# Çalıştırma komutu app.run olarak düzeltildi
 if __name__ == "__main__":
     varsayilanPort = int(os.environ.get("PORT", VARSAYILAN_PORT))
-    uygulama.run(host="0.0.0.0", port=varsayilanPort, debug=False)
+    app.run(host="0.0.0.0", port=varsayilanPort, debug=False)
