@@ -430,6 +430,7 @@
         let GUNCELLEME_ARALIGI_MS = parseInt(localStorage.getItem('mbtYenilemeHizi')) || 5000;
         let veriGuncellemeTimer;
 
+        // 1. DÜZELTME: Sonsuz Döngü Engellendi ve Arayüz Değişiklikleri Buraya Taşındı
         supabaseIstemci.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
                 if (session) {
@@ -445,10 +446,16 @@
                     document.getElementById('ayar-isim').value = userName;
                     document.getElementById('ayar-hiz').value = GUNCELLEME_ARALIGI_MS;
 
-                    girisSonrasiArayuz(false);
+                    girisSonrasiArayuz(); // Modalı otomatik kapatacak fonksiyon (Aşağıda güncellendi)
                 }
             } else if (event === 'SIGNED_OUT') {
-                cikisYap();
+                // Çıkış yapıldığında sadece arayüzü eski haline getir, tekrar signOut çağırma!
+                document.getElementById('user-profile-menu').classList.add('d-none');
+                document.getElementById('btn-login-modal').classList.remove('d-none');
+                document.getElementById('portfoy-nav-item').classList.add('d-none');
+                document.getElementById('pills-doviz-tab').click();
+                grafikAlaniniGoster(true);
+                document.getElementById('kullanici-adi').innerHTML = `Yatırımcı`;
             }
         });
 
@@ -493,7 +500,13 @@
         }
 
         async function googleIleGirisYap() {
-            const { data, error } = await supabaseIstemci.auth.signInWithOAuth({ provider: 'google' });
+            // YÖNLENDİRME DÜZELTMESİ: Site canlıda olduğu için origin (mevcut adres) eklendi
+            const { data, error } = await supabaseIstemci.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
             if (error) mesajGoster('authMessage', "Google ile bağlantı kurulamadı.", "danger");
         }
 
@@ -516,7 +529,10 @@
             if (!email || !password) { mesajGoster('authMessage', "Lütfen e-posta ve şifrenizi girin!", "warning"); return; }
 
             const { data, error } = await supabaseIstemci.auth.signInWithPassword({ email: email, password: password });
-            if (error) mesajGoster('authMessage', "Giriş başarısız! E-posta veya şifreniz hatalı.", "danger");
+            if (error) {
+                mesajGoster('authMessage', "Giriş başarısız! E-posta veya şifreniz hatalı.", "danger");
+            }
+            // Başarılı girişi onAuthStateChange otomatik yakalayıp modalı kapatacak
         }
 
         let portfoyGrafigi = null;
@@ -745,11 +761,14 @@
             }
         }
 
-        function girisSonrasiArayuz(modalKapat = true) {
-            if(modalKapat) {
+        // 2. DÜZELTME: Modalı Hatasız Kapatan Fonksiyon
+        function girisSonrasiArayuz() {
+            let modalElemani = document.getElementById('loginModal');
+            if (modalElemani.classList.contains('show')) {
                 let kapatBtn = document.getElementById('modal-kapat-btn');
                 if(kapatBtn) kapatBtn.click();
             }
+
             document.getElementById('btn-login-modal').classList.add('d-none');
             document.getElementById('user-profile-menu').classList.remove('d-none');
 
@@ -760,16 +779,9 @@
             setTimeout(portfoyVerileriniCek, 200);
         }
 
+        // 3. DÜZELTME: Sonsuz Döngüden Kurtulmuş Çıkış Fonksiyonu
         function cikisYap() {
             supabaseIstemci.auth.signOut();
-            document.getElementById('user-profile-menu').classList.add('d-none');
-            document.getElementById('btn-login-modal').classList.remove('d-none');
-            document.getElementById('portfoy-nav-item').classList.add('d-none');
-
-            document.getElementById('pills-doviz-tab').click();
-            grafikAlaniniGoster(true);
-
-            document.getElementById('kullanici-adi').innerHTML = `Yatırımcı`;
         }
 
         async function isimGuncelle() {
@@ -829,6 +841,4 @@
                 portfoyVerileriniCek();
             }
         }
-    </script>
-</body>
-</html>
+    </script>s
