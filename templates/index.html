@@ -6,221 +6,410 @@
     <link rel="icon" href="{{ url_for('static', filename='icon.png') }}" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
     <style>
         body { background-color: #000000; color: #FFFFFF; font-family: 'Segoe UI', sans-serif; }
         .card { background-color: #121212; border: 1px solid #333; border-radius: 15px; margin-bottom: 20px; }
         .text-bright { color: #FFFFFF !important; font-weight: 600; }
 
-        .price-tag {
-            font-size: 1.6rem;
-            font-weight: bold;
-            color: #FFFFFF;
-            transition: color 0.5s ease, text-shadow 0.5s ease;
-        }
-
+        .price-tag { font-size: 1.6rem; font-weight: bold; color: #FFFFFF; transition: color 0.5s ease, text-shadow 0.5s ease; }
         .price-up { color: #00FF41 !important; text-shadow: 0 0 10px #00FF41; }
         .price-down { color: #FF3131 !important; text-shadow: 0 0 10px #FF3131; }
 
         .header-title { color: #FFD700; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #FFD700; display: inline-block; padding-bottom: 5px; }
 
         .update-flash { animation: flash-animation 1s; }
-        @keyframes flash-animation {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
+        @keyframes flash-animation { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
         .loading-text { font-size: 1rem; color: #888888; font-weight: 400; font-style: italic; }
 
-        /* Sekme Tasarımı */
         .nav-pills .nav-link { color: #888; border-radius: 10px; margin: 0 5px; transition: all 0.3s; font-weight: bold; }
         .nav-pills .nav-link.active { background-color: #333; color: #FFD700; border: 1px solid #FFD700; }
         .nav-pills .nav-link:hover:not(.active) { color: #FFF; background-color: #222; }
+
+        .modal-content { background-color: #1a1a1a; color: white; border: 1px solid #FFD700; border-radius: 15px; }
+        .modal-header { border-bottom: 1px solid #333; }
+        .modal-footer { border-top: 1px solid #333; }
+        .form-control.dark-input { background-color: #2d2d2d; color: white; border: 1px solid #555; }
+        .form-control.dark-input:focus { background-color: #3d3d3d; color: white; border-color: #FFD700; box-shadow: none; }
+
+        .portfoy-text { color: #FFFFFF !important; font-weight: 500; font-size: 1.1rem; }
     </style>
 </head>
 <body class="p-4">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h1 class="header-title d-inline-flex align-items-center pb-2">
-                <img src="{{ url_for('static', filename='icon.png') }}" alt="MBT Logo" style="width: 60px; height: 60px; margin-right: 15px; border-radius: 8px;">
-                MBT Finans Terminali
-            </h1>
+    <div class="container-fluid" style="max-width: 1450px;">
+
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-3 text-start d-none d-md-block"></div>
+            <div class="col-md-6 text-center">
+                <h1 class="header-title d-inline-flex align-items-center pb-2 mb-0">
+                    <img src="{{ url_for('static', filename='icon.png') }}" alt="MBT Logo" style="width: 60px; height: 60px; margin-right: 15px; border-radius: 8px;">
+                    MBT Finans Terminali
+                </h1>
+            </div>
+            <div class="col-md-3 text-end mt-3 mt-md-0">
+                <button class="btn btn-outline-warning fw-bold" id="btn-login-modal" data-bs-toggle="modal" data-bs-target="#loginModal">
+                    <i class="bi bi-person-circle me-1"></i> Giriş Yap
+                </button>
+
+                <div id="user-profile-menu" class="d-none dropdown">
+                    <button class="btn btn-dark dropdown-toggle d-flex align-items-center border border-warning rounded-pill px-3 py-1 ms-auto shadow-sm" type="button" id="profilDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background-color: #1a1a1a;">
+                        <img id="profil-resmi" src="" alt="Profil" class="rounded-circle me-2 border border-secondary" width="32" height="32" style="object-fit: cover;">
+                        <span id="kullanici-adi" class="text-warning fw-bold">Yatırımcı</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg border border-warning mt-2" aria-labelledby="profilDropdown" style="background-color: #1a1a1a; border-radius: 12px;">
+                        <li><h6 class="dropdown-header text-light" id="profil-email">ornek@mail.com</h6></li>
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><a class="dropdown-item py-2" href="#" data-bs-toggle="modal" data-bs-target="#ayarlarModal"><i class="bi bi-gear-fill me-2 text-info"></i> Ayarlar</a></li>
+                        <li><a class="dropdown-item py-2" href="#"><i class="bi bi-shield-lock-fill me-2 text-success"></i> Güvenlik</a></li>
+                        <li><hr class="dropdown-divider border-secondary"></li>
+                        <li><a class="dropdown-item py-2 text-danger fw-bold" href="#" onclick="cikisYap()"><i class="bi bi-box-arrow-right me-2"></i> Çıkış Yap</a></li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
-        <ul class="nav nav-pills justify-content-center mb-5" id="pills-tab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active px-4 py-2" id="pills-doviz-tab" data-bs-toggle="pill" data-bs-target="#pills-doviz" type="button" role="tab" aria-controls="pills-doviz" aria-selected="true">💱 DÖVİZ PİYASASI</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link px-4 py-2" id="pills-altin-tab" data-bs-toggle="pill" data-bs-target="#pills-altin" type="button" role="tab" aria-controls="pills-altin" aria-selected="false">🏆 EMTİA PİYASALARI</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link px-4 py-2" id="pills-kripto-tab" data-bs-toggle="pill" data-bs-target="#pills-kripto" type="button" role="tab" aria-controls="pills-kripto" aria-selected="false">🪙 KRİPTO VARLIKLAR</button>
-            </li>
-        </ul>
+        <div class="row">
 
-        <div class="tab-content" id="pills-tabContent">
+            <div class="col-lg-8 col-xl-9">
 
-            <div class="tab-pane fade show active" id="pills-doviz" role="tabpanel" aria-labelledby="pills-doviz-tab">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card p-4 shadow">
-                            <h3 class="text-bright mb-3">💱 Döviz Hesapla</h3>
-                            <input type="number" id="calc-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Miktar Giriniz">
-                            <select id="calc-birim" class="form-select mb-3 bg-dark text-white border-secondary">
-                                <option value="USD">Dolar (USD)</option>
-                                <option value="EUR">Euro (EUR)</option>
-                                <option value="GBP">Sterlin (GBP)</option>
-                                <option value="CHF">İsviçre Frangı (CHF)</option>
-                                <option value="JPY">Japon Yeni (JPY)</option>
-                                <option value="PLN">Polonya Zlotisi (PLN)</option>
-                            </select>
-                            <button type="button" class="btn btn-primary w-100 fw-bold" onclick="calcDoviz()">TL'YE ÇEVİR</button>
-                            <div id="doviz-sonuc-box" class="alert alert-info mt-3 bg-primary text-white border-0" style="display:none;">
-                                <span id="doviz-sonuc-text"></span>
+                <ul class="nav nav-pills justify-content-center mb-4" id="pills-tab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active px-4 py-2" id="pills-doviz-tab" data-bs-toggle="pill" data-bs-target="#pills-doviz" type="button" role="tab" aria-controls="pills-doviz" aria-selected="true" onclick="grafikAlaniniGoster(true)">💱 DÖVİZ</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link px-4 py-2" id="pills-altin-tab" data-bs-toggle="pill" data-bs-target="#pills-altin" type="button" role="tab" aria-controls="pills-altin" aria-selected="false" onclick="grafikAlaniniGoster(true)">🏆 EMTİA</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link px-4 py-2" id="pills-kripto-tab" data-bs-toggle="pill" data-bs-target="#pills-kripto" type="button" role="tab" aria-controls="pills-kripto" aria-selected="false" onclick="grafikAlaniniGoster(true)">🪙 KRİPTO</button>
+                    </li>
+                    <li class="nav-item d-none" role="presentation" id="portfoy-nav-item">
+                        <button class="nav-link px-4 py-2 border border-warning text-warning" id="pills-portfoy-tab" data-bs-toggle="pill" data-bs-target="#pills-portfoy" type="button" role="tab" aria-controls="pills-portfoy" aria-selected="false" onclick="grafikAlaniniGoster(false)">💼 PORTFÖYÜM</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="pills-tabContent">
+
+                    <div class="tab-pane fade show active" id="pills-doviz" role="tabpanel" aria-labelledby="pills-doviz-tab">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card p-4 shadow h-100">
+                                    <h3 class="text-bright mb-3">💱 Döviz Hesapla</h3>
+                                    <input type="number" id="calc-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Miktar Giriniz">
+                                    <select id="calc-birim" class="form-select mb-3 bg-dark text-white border-secondary">
+                                        <option value="USD">Dolar (USD)</option>
+                                        <option value="EUR">Euro (EUR)</option>
+                                        <option value="GBP">Sterlin (GBP)</option>
+                                        <option value="CHF">İsviçre Frangı (CHF)</option>
+                                        <option value="JPY">Japon Yeni (JPY)</option>
+                                        <option value="PLN">Polonya Zlotisi (PLN)</option>
+                                    </select>
+                                    <button type="button" class="btn btn-primary w-100 fw-bold" onclick="isleDovizHesapla()">TL'YE ÇEVİR</button>
+                                    <div id="doviz-sonuc-box" class="alert alert-info mt-3 bg-primary text-white border-0" style="display:none;">
+                                        <span id="doviz-sonuc-text"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mt-4 mt-md-0">
+                                <div class="card p-4 shadow border-secondary h-100">
+                                    <h3 class="text-bright mb-3">📈 Canlı Döviz Verileri</h3>
+                                    {% for doviz_kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('CHF','CHF / TRY','ch'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-dark">
+                                        <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
+                                        <span class="price-tag fs-5" id="val-{{doviz_kod}}">
+                                            {% if kurlar.get(doviz_kod) %}{{ kurlar.get(doviz_kod) }} ₺{% else %}<span class="loading-text fs-6">⏳ Bekleniyor...</span>{% endif %}
+                                        </span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-md-6">
-                        <h3 class="text-bright mb-3">📈 Canlı Piyasa Verileri</h3>
-                        {% for doviz_kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('CHF','CHF / TRY','ch'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
-                        <div class="card p-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
-                                <span class="price-tag" id="val-{{doviz_kod}}">
-                                    {% if kurlar.get(doviz_kod) %}{{ kurlar.get(doviz_kod) }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}
-                                </span>
+                    <div class="tab-pane fade" id="pills-altin" role="tabpanel" aria-labelledby="pills-altin-tab">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card p-4 shadow h-100">
+                                    <h3 class="text-bright mb-3 text-warning">✨ Kıymetli Maden Hesapla</h3>
+                                    <input type="number" id="calc-altin-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Adet veya Gram">
+                                    <select id="calc-altin-turu" class="form-select mb-3 bg-dark text-white border-secondary">
+                                        <option value="GRAM">Gram Altın</option>
+                                        <option value="CEYREK">Çeyrek Altın</option>
+                                        <option value="YARIM">Yarım Altın</option>
+                                        <option value="TAM">Tam Altın</option>
+                                        <option value="CUMHURIYET">Cumhuriyet Altını</option>
+                                        <option value="ATA">Ata Altını</option>
+                                    </select>
+                                    <button type="button" class="btn btn-warning w-100 fw-bold" onclick="isleAltinHesapla()">HESAPLA</button>
+                                    <div id="altin-sonuc-box" class="alert alert-warning mt-3 bg-warning text-dark border-0" style="display:none;">
+                                        <span id="altin-sonuc-text"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mt-4 mt-md-0">
+                                <div class="card p-4 shadow border-warning h-100">
+                                    <h3 class="text-warning mb-3">🏆 Emtia Piyasaları </h3>
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-dark">
+                                        <span class="text-warning fs-5">🏆 Gram Altın</span>
+                                        <span class="price-tag fs-5" id="val-GRAM">{% if altin_fiyatlari.get('GRAM') %}{{ altin_fiyatlari.get('GRAM') }} ₺{% else %}<span class="loading-text fs-6">⏳ Bekleniyor...</span>{% endif %}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-dark">
+                                        <span class="text-info fs-5">🌍 Ons Altın (XAU)</span>
+                                        <span class="price-tag fs-5" id="val-ONS">{% if altin_fiyatlari.get('ONS') %}${{ altin_fiyatlari.get('ONS') }}{% else %}<span class="loading-text fs-6">⏳ Bekleniyor...</span>{% endif %}</span>
+                                    </div>
+                                    {% for altin_kod, isim in [('CEYREK', 'Çeyrek Altın'), ('YARIM', 'Yarım Altın'), ('TAM', 'Tam Altın')] %}
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-dark">
+                                        <span class="text-bright fs-5">🟡 {{isim}}</span>
+                                        <span class="price-tag fs-5" id="val-{{altin_kod}}">{% if altin_fiyatlari.get(altin_kod) %}{{ altin_fiyatlari.get(altin_kod) }} ₺{% else %}<span class="loading-text fs-6">⏳ Bekleniyor...</span>{% endif %}</span>
+                                    </div>
+                                    {% endfor %}
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span style="color: #C0C0C0;" class="fs-5">🥈 Ons Gümüş (XAG)</span>
+                                        <span class="price-tag fs-5" id="val-ONS-GUMUS">{% if altin_fiyatlari.get('ONS-GUMUS') %}${{ altin_fiyatlari.get('ONS-GUMUS') }}{% else %}<span class="loading-text fs-6">⏳ Bekleniyor...</span>{% endif %}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        {% endfor %}
+                    </div>
+
+                    <div class="tab-pane fade" id="pills-kripto" role="tabpanel" aria-labelledby="pills-kripto-tab">
+                        <div class="row justify-content-center">
+                            <div class="col-md-10">
+                                <div class="card p-4 shadow border-secondary">
+                                    <h3 class="text-info mb-4 text-center">🪙 Kripto Varlıklar (USDT)</h3>
+
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-dark">
+                                        <span class="text-bright fs-5" style="color: #F7931A !important;">₿ Bitcoin (BTC)</span>
+                                        <span class="price-tag" id="val-BTC">{% if kripto_fiyatlari.get('BTC') %}${{ kripto_fiyatlari.get('BTC') }}{% else %}<span class="loading-text">⏳ Bekleniyor...</span>{% endif %}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-dark">
+                                        <span class="text-bright fs-5" style="color: #627EEA !important;">⟠ Ethereum (ETH)</span>
+                                        <span class="price-tag" id="val-ETH">{% if kripto_fiyatlari.get('ETH') %}${{ kripto_fiyatlari.get('ETH') }}{% else %}<span class="loading-text">⏳ Bekleniyor...</span>{% endif %}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-dark">
+                                        <span class="text-bright fs-5" style="color: #14F195 !important;">◎ Solana (SOL)</span>
+                                        <span class="price-tag" id="val-SOL">{% if kripto_fiyatlari.get('SOL') %}${{ kripto_fiyatlari.get('SOL') }}{% else %}<span class="loading-text">⏳ Bekleniyor...</span>{% endif %}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-dark">
+                                        <span class="text-bright fs-5" style="color: #E84142 !important;">🔺 Avalanche (AVAX)</span>
+                                        <span class="price-tag" id="val-AVAX">{% if kripto_fiyatlari.get('AVAX') %}${{ kripto_fiyatlari.get('AVAX') }}{% else %}<span class="loading-text">⏳ Bekleniyor...</span>{% endif %}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-dark">
+                                        <span class="text-bright fs-5" style="color: #C2A633 !important;">🐕 Dogecoin (DOGE)</span>
+                                        <span class="price-tag" id="val-DOGE">{% if kripto_fiyatlari.get('DOGE') %}${{ kripto_fiyatlari.get('DOGE') }}{% else %}<span class="loading-text">⏳ Bekleniyor...</span>{% endif %}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-bright fs-5" style="color: #FFFFFF !important;">✕ Ripple (XRP)</span>
+                                        <span class="price-tag" id="val-XRP">{% if kripto_fiyatlari.get('XRP') %}${{ kripto_fiyatlari.get('XRP') }}{% else %}<span class="loading-text">⏳ Bekleniyor...</span>{% endif %}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="pills-portfoy" role="tabpanel" aria-labelledby="pills-portfoy-tab">
+                        <div class="card p-4 shadow border-warning">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h3 class="text-warning m-0"><i class="bi bi-pie-chart-fill me-2"></i> Varlık Dağılımım</h3>
+                                <button class="btn btn-success fw-bold px-3 py-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#varlikEkleModal" style="border-radius: 10px;">
+                                    <i class="bi bi-wallet2 me-1"></i> Ekle / Çıkar
+                                </button>
+                            </div>
+
+                            <div class="row align-items-center">
+                                <div class="col-md-6 text-center">
+                                    <canvas id="portfolioChart" width="300" height="300"></canvas>
+                                </div>
+                                <div class="col-md-6 mt-4 mt-md-0">
+                                    <h4 class="text-bright mb-3">Toplam Varlık: <span class="text-success" id="cuzdan-toplam">0,00 ₺</span></h4>
+                                    <hr class="border-secondary">
+
+                                    <ul class="list-unstyled" id="dinamik-portfoy-listesi">
+                                        <li class="mb-2 portfoy-text"><span class="badge bg-secondary me-2">Boş</span> Cüzdanınızda varlık bulunmuyor.</li>
+                                    </ul>
+
+                                    <hr class="border-secondary">
+                                    <p class="text-muted small"><em>* Verileriniz bulut veritabanından anlık çekilmektedir.</em></p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="tab-pane fade" id="pills-altin" role="tabpanel" aria-labelledby="pills-altin-tab">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="card p-4 shadow">
-                            <h3 class="text-bright mb-3 text-warning">✨ Kıymetli Maden Hesapla</h3>
-                            <input type="number" id="calc-altin-miktar" class="form-control mb-3 bg-dark text-white border-secondary" placeholder="Adet veya Gram">
-                            <select id="calc-altin-turu" class="form-select mb-3 bg-dark text-white border-secondary">
-                                <option value="GRAM">Gram Altın</option>
-                                <option value="CEYREK">Çeyrek Altın</option>
-                                <option value="YARIM">Yarım Altın</option>
-                                <option value="TAM">Tam Altın</option>
-                                <option value="CUMHURIYET">Cumhuriyet Altını</option>
-                                <option value="ATA">Ata Altını</option>
-                            </select>
-                            <button type="button" class="btn btn-warning w-100 fw-bold" onclick="calcAltin()">HESAPLA</button>
-                            <div id="altin-sonuc-box" class="alert alert-warning mt-3 bg-warning text-dark border-0" style="display:none;">
-                                <span id="altin-sonuc-text"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <h3 class="text-warning mb-3">🏆 Emtia Piyasaları </h3>
-                        <div class="card p-3 border-warning">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-warning fs-5">🏆 Gram Altın</span>
-                                <span class="price-tag" id="val-GRAM">{% if altin_fiyatlari.get('GRAM') %}{{ altin_fiyatlari.get('GRAM') }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
-                            </div>
-                        </div>
-                        <div class="card p-3 border-info">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-info fs-5">🌍 Ons Altın (XAU)</span>
-                                <span class="price-tag" id="val-ONS">{% if altin_fiyatlari.get('ONS') %}${{ altin_fiyatlari.get('ONS') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
-                            </div>
-                        </div>
-                        {% for altin_kod, isim in [('CEYREK', 'Çeyrek Altın'), ('YARIM', 'Yarım Altın'), ('TAM', 'Tam Altın'), ('CUMHURIYET', 'Cumhuriyet Altını'), ('ATA', 'Ata Altını')] %}
-                        <div class="card p-3" style="border: 1px solid #555;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-bright fs-5">🟡 {{isim}}</span>
-                                <span class="price-tag" id="val-{{altin_kod}}">{% if altin_fiyatlari.get(altin_kod) %}{{ altin_fiyatlari.get(altin_kod) }} ₺{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
-                            </div>
-                        </div>
-                        {% endfor %}
-                        <div class="card p-3" style="border: 1px solid #C0C0C0;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span style="color: #C0C0C0;" class="fs-5">🥈 Ons Gümüş (XAG)</span>
-                                <span class="price-tag" id="val-ONS-GUMUS">{% if altin_fiyatlari.get('ONS-GUMUS') %}${{ altin_fiyatlari.get('ONS-GUMUS') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
+                <div class="row mt-4" id="canli-grafik-alani">
+                    <div class="col-12">
+                        <div class="card p-4 shadow border-secondary">
+                            <h3 class="text-bright mb-3">📊 Canlı Piyasa Grafikleri</h3>
+                            <div class="tradingview-widget-container">
+                                <div class="tradingview-widget-container__widget"></div>
+                                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js" async>
+                                {
+                                "symbols": [
+                                    ["Dolar / TL", "FX_IDC:USDTRY|1D"],
+                                    ["Euro / TL", "FX_IDC:EURTRY|1D"],
+                                    ["Ons Altın ($)", "OANDA:XAUUSD|1D"],
+                                    ["Bitcoin ($)", "BINANCE:BTCUSDT|1D"]
+                                ],
+                                "chartOnly": false, "width": "100%", "height": 350, "locale": "tr", "colorTheme": "dark", "autosize": false, "showVolume": false, "showMA": false, "hideDateRanges": false, "hideMarketStatus": false, "hideSymbolLogo": false, "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "Segoe UI, sans-serif", "fontSize": "10", "noTimeScale": false, "valuesTracking": "1", "changeMode": "price-and-percent", "chartType": "area", "maLineColor": "#2962FF", "maLineWidth": 1, "maLength": 9, "lineWidth": 2, "lineType": 0,
+                                "dateRanges": ["1d|1", "1w|15", "1m|30", "3m|60", "12m|1D", "60m|1W", "all|1M"]
+                                }
+                                </script>
                             </div>
                         </div>
                     </div>
                 </div>
+
             </div>
 
-            <div class="tab-pane fade" id="pills-kripto" role="tabpanel" aria-labelledby="pills-kripto-tab">
-                <div class="row justify-content-center">
-                    <div class="col-md-8">
-                        <h3 class="text-info mb-3 text-center">🪙 Kripto Varlıklar (USDT)</h3>
+            <div class="col-lg-4 col-xl-3 mt-4 mt-lg-0">
+                <div class="card p-3 shadow border-info h-100" style="min-height: 800px;">
+                    <h3 class="text-info mb-3 d-flex align-items-center border-bottom border-secondary pb-2">
+                        <i class="bi bi-newspaper me-2"></i> Piyasa Haberleri
+                    </h3>
 
-                        <div class="card p-3" style="border: 1px solid #F7931A;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-bright fs-5" style="color: #F7931A !important;">₿ Bitcoin (BTC)</span>
-                                <span class="price-tag" id="val-BTC">{% if kripto_fiyatlari.get('BTC') %}${{ kripto_fiyatlari.get('BTC') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
-                            </div>
-                        </div>
-
-                        <div class="card p-3" style="border: 1px solid #627EEA;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-bright fs-5" style="color: #627EEA !important;">⟠ Ethereum (ETH)</span>
-                                <span class="price-tag" id="val-ETH">{% if kripto_fiyatlari.get('ETH') %}${{ kripto_fiyatlari.get('ETH') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
-                            </div>
-                        </div>
-
-                        <div class="card p-3" style="border: 1px solid #14F195;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-bright fs-5" style="color: #14F195 !important;">◎ Solana (SOL)</span>
-                                <span class="price-tag" id="val-SOL">{% if kripto_fiyatlari.get('SOL') %}${{ kripto_fiyatlari.get('SOL') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
-                            </div>
-                        </div>
-
-                        <div class="card p-3" style="border: 1px solid #E84142;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-bright fs-5" style="color: #E84142 !important;">🔺 Avalanche (AVAX)</span>
-                                <span class="price-tag" id="val-AVAX">{% if kripto_fiyatlari.get('AVAX') %}${{ kripto_fiyatlari.get('AVAX') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
-                            </div>
-                        </div>
-
-                        <div class="card p-3" style="border: 1px solid #C2A633;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-bright fs-5" style="color: #C2A633 !important;">🐕 Dogecoin (DOGE)</span>
-                                <span class="price-tag" id="val-DOGE">{% if kripto_fiyatlari.get('DOGE') %}${{ kripto_fiyatlari.get('DOGE') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
-                            </div>
-                        </div>
-
-                        <div class="card p-3" style="border: 1px solid #23292F;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="text-bright fs-5" style="color: #FFFFFF !important;">✕ Ripple (XRP)</span>
-                                <span class="price-tag" id="val-XRP">{% if kripto_fiyatlari.get('XRP') %}${{ kripto_fiyatlari.get('XRP') }}{% else %}<span class="loading-text">⏳ Bağlanıyor...</span>{% endif %}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <div class="row mt-5">
-            <div class="col-12">
-                <div class="card p-4 shadow border-secondary">
-                    <h3 class="text-bright mb-3">📊 Canlı Piyasa Grafikleri</h3>
-                    <div class="tradingview-widget-container">
-                        <div class="tradingview-widget-container__widget"></div>
-                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-overview.js" async>
+                    <div class="tradingview-widget-container" style="height: 100%; width: 100%;">
+                        <div class="tradingview-widget-container__widget" style="height: 100%; width: 100%;"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
                         {
-                        "symbols": [
-                            ["Dolar / TL", "FX_IDC:USDTRY|1D"],
-                            ["Euro / TL", "FX_IDC:EURTRY|1D"],
-                            ["Ons Altın ($)", "OANDA:XAUUSD|1D"],
-                            ["Bitcoin ($)", "BINANCE:BTCUSDT|1D"]
-                        ],
-                        "chartOnly": false, "width": "100%", "height": 400, "locale": "tr", "colorTheme": "dark", "autosize": false, "showVolume": false, "showMA": false, "hideDateRanges": false, "hideMarketStatus": false, "hideSymbolLogo": false, "scalePosition": "right", "scaleMode": "Normal", "fontFamily": "Segoe UI, sans-serif", "fontSize": "10", "noTimeScale": false, "valuesTracking": "1", "changeMode": "price-and-percent", "chartType": "area", "maLineColor": "#2962FF", "maLineWidth": 1, "maLength": 9, "lineWidth": 2, "lineType": 0,
-                        "dateRanges": ["1d|1", "1w|15", "1m|30", "3m|60", "12m|1D", "60m|1W", "all|1M"]
+                            "feedMode": "all_symbols",
+                            "colorTheme": "dark",
+                            "isTransparent": true,
+                            "displayMode": "regular",
+                            "width": "100%",
+                            "height": "800",
+                            "locale": "tr"
                         }
                         </script>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title text-warning fw-bold" id="loginModalLabel"><i class="bi bi-box-arrow-in-right"></i> Terminale Giriş Yap</h5>
+                    <button type="button" class="btn-close btn-close-white" id="modal-kapat-btn" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="d-grid gap-2 mb-4">
+                        <button class="btn bg-white fw-bold text-dark border-0 shadow-sm d-flex align-items-center justify-content-center py-2" type="button" onclick="googleIleGirisYap()">
+                           <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" width="20" height="20" class="me-2">
+                           Google ile Giriş Yap
+                        </button>
+                    </div>
+                    <div class="d-flex align-items-center mb-4">
+                        <hr class="flex-grow-1 border-secondary m-0">
+                        <span class="mx-3 text-light small">veya e-posta ile</span>
+                        <hr class="flex-grow-1 border-secondary m-0">
+                    </div>
+                    <div id="authMessage" class="alert d-none text-center small mb-3 fw-bold" role="alert"></div>
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label class="form-label text-light">E-Posta Adresi</label>
+                            <input type="email" id="emailInput" class="form-control dark-input" placeholder="ornek@mail.com" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label text-light">Şifre</label>
+                            <input type="password" id="passwordInput" class="form-control dark-input" placeholder="••••••••" required>
+                        </div>
+                        <button type="button" id="authSubmitBtn" class="btn btn-warning w-100 fw-bold" onclick="authIslemiYurut()">GİRİŞ YAP</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <a href="#" id="authToggleLink" class="text-info text-decoration-none small" onclick="modDegistir()">Hesabın yok mu? Hemen Kayıt Ol</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="varlikEkleModal" tabindex="-1" aria-labelledby="varlikEkleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title text-success fw-bold" id="varlikEkleModalLabel"><i class="bi bi-wallet2"></i> Cüzdan İşlemi (Ekle / Çıkar)</h5>
+                    <button type="button" class="btn-close btn-close-white" id="modal-varlik-kapat" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div id="varlikMesaj" class="alert d-none text-center small mb-3 fw-bold" role="alert"></div>
+                    <form id="varlikForm">
+                        <div class="mb-3">
+                            <label class="form-label text-light">Varlık Türünü Seçin</label>
+                            <select id="yeniVarlikKodu" class="form-select dark-input">
+                                <optgroup label="💵 Nakit Hesap">
+                                    <option value="TRY">Türk Lirası (TL)</option>
+                                </optgroup>
+                                <optgroup label="💱 Dövizler">
+                                    <option value="USD">Dolar (USD)</option>
+                                    <option value="EUR">Euro (EUR)</option>
+                                    <option value="GBP">Sterlin (GBP)</option>
+                                </optgroup>
+                                <optgroup label="🏆 Emtialar">
+                                    <option value="GRAM">Gram Altın</option>
+                                    <option value="ONS-GUMUS">Ons Gümüş (XAG)</option>
+                                    <option value="CEYREK">Çeyrek Altın</option>
+                                </optgroup>
+                                <optgroup label="🪙 Kripto Paralar">
+                                    <option value="BTC">Bitcoin (BTC)</option>
+                                    <option value="ETH">Ethereum (ETH)</option>
+                                    <option value="SOL">Solana (SOL)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label text-light">İşlem Miktarı</label>
+                            <input type="number" step="0.0001" id="yeniVarlikMiktar" class="form-control dark-input" placeholder="Örn: 100" required>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-success w-50 fw-bold" onclick="portfoyIslem(1)"><i class="bi bi-plus-lg me-1"></i> EKLE</button>
+                            <button type="button" class="btn btn-danger w-50 fw-bold" onclick="portfoyIslem(-1)"><i class="bi bi-dash-lg me-1"></i> ÇIKAR</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="ayarlarModal" tabindex="-1" aria-labelledby="ayarlarModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-info">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-info fw-bold" id="ayarlarModalLabel"><i class="bi bi-gear-fill"></i> Terminal Ayarları</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div id="ayarlarMesaj" class="alert d-none text-center small mb-3 fw-bold" role="alert"></div>
+
+                    <h6 class="text-warning mb-3 border-bottom border-secondary pb-2"><i class="bi bi-person-badge"></i> Profil Yönetimi</h6>
+                    <div class="mb-4 d-flex gap-2">
+                        <input type="text" id="ayar-isim" class="form-control dark-input" placeholder="Adınızı Girin">
+                        <button type="button" class="btn btn-outline-info fw-bold" onclick="isimGuncelle()">Kaydet</button>
+                    </div>
+
+                    <h6 class="text-warning mb-3 border-bottom border-secondary pb-2"><i class="bi bi-sliders"></i> Sistem Tercihleri</h6>
+                    <div class="mb-4">
+                        <label class="form-label text-light small">Canlı Veri Yenileme Hızı</label>
+                        <div class="d-flex gap-2">
+                            <select id="ayar-hiz" class="form-select dark-input">
+                                <option value="5000">Hızlı (5 Saniye - Yüksek CPU)</option>
+                                <option value="15000">Dengeli (15 Saniye)</option>
+                                <option value="30000">Tasarruflu (30 Saniye)</option>
+                            </select>
+                            <button type="button" class="btn btn-outline-info fw-bold" onclick="hizGuncelle()">Uygula</button>
+                        </div>
+                    </div>
+
+                    <h6 class="text-danger mt-5 mb-3 border-bottom border-secondary pb-2"><i class="bi bi-exclamation-triangle-fill"></i> Tehlikeli Bölge</h6>
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-outline-danger fw-bold" onclick="cuzdanSifirla()">
+                            <i class="bi bi-trash3-fill me-1"></i> Tüm Cüzdanı Sıfırla
+                        </button>
+                        <small class="text-muted mt-2 text-center">Dikkat: Bu işlem geri alınamaz ve tüm varlıklarınızı siler.</small>
                     </div>
                 </div>
             </div>
@@ -228,112 +417,418 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
-        let eskiFiyatlar = {};
+        const { createClient } = supabase;
+        const SUPABASE_URL = 'https://ebyinbdxwjyhcmivtluq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVieWluYmR4d2p5aGNtaXZ0bHVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MTQyMjgsImV4cCI6MjA4OTA5MDIyOH0.MENmM3G6JKnJtYU6sR1jX9r-cKkPYStqBHZzGWvVSpY';
+        const supabaseIstemci = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        function temizleVeSayiyaCevir(text) {
+        let oncekiFiyatlar = JSON.parse(localStorage.getItem('mbtFiyatHafizasi')) || {};
+        let GUNCELLEME_ARALIGI_MS = parseInt(localStorage.getItem('mbtYenilemeHizi')) || 5000;
+        let veriGuncellemeTimer;
+
+        supabaseIstemci.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                if (session) {
+                    let userName = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+                    userName = userName.charAt(0).toUpperCase() + userName.slice(1);
+
+                    let avatarUrl = session.user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${userName}&background=random&color=fff&rounded=true`;
+
+                    document.getElementById('kullanici-adi').innerText = userName;
+                    document.getElementById('profil-email').innerText = session.user.email;
+                    document.getElementById('profil-resmi').src = avatarUrl;
+
+                    document.getElementById('ayar-isim').value = userName;
+                    document.getElementById('ayar-hiz').value = GUNCELLEME_ARALIGI_MS;
+
+                    girisSonrasiArayuz(false);
+                }
+            } else if (event === 'SIGNED_OUT') {
+                cikisYap();
+            }
+        });
+
+        function grafikAlaniniGoster(goster) {
+            const alan = document.getElementById('canli-grafik-alani');
+            if (alan) alan.style.display = goster ? 'flex' : 'none';
+        }
+
+        let isLoginMode = true;
+
+        function mesajGoster(kutuId, mesaj, tur) {
+            const msgBox = document.getElementById(kutuId);
+            msgBox.className = `alert alert-${tur} text-center small mb-3 fw-bold`;
+            msgBox.innerText = mesaj;
+            msgBox.classList.remove('d-none');
+            setTimeout(() => { msgBox.classList.add('d-none'); }, 4000);
+        }
+
+        function modDegistir() {
+            isLoginMode = !isLoginMode;
+            const baslik = document.getElementById('loginModalLabel');
+            const btn = document.getElementById('authSubmitBtn');
+            const link = document.getElementById('authToggleLink');
+            document.getElementById('authMessage').classList.add('d-none');
+
+            if (isLoginMode) {
+                baslik.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Terminale Giriş Yap';
+                btn.innerText = 'GİRİŞ YAP';
+                btn.classList.replace('btn-outline-info', 'btn-warning');
+                link.innerText = 'Hesabın yok mu? Hemen Kayıt Ol';
+            } else {
+                baslik.innerHTML = '<i class="bi bi-person-plus-fill"></i> Terminale Kayıt Ol';
+                btn.innerText = 'KAYIT OL';
+                btn.classList.replace('btn-warning', 'btn-outline-info');
+                link.innerText = 'Zaten hesabın var mı? Giriş Yap';
+            }
+        }
+
+        async function authIslemiYurut() {
+            if (isLoginMode) await epostaIleGirisYap();
+            else await epostaIleKayitOl();
+        }
+
+        async function googleIleGirisYap() {
+            const { data, error } = await supabaseIstemci.auth.signInWithOAuth({ provider: 'google' });
+            if (error) mesajGoster('authMessage', "Google ile bağlantı kurulamadı.", "danger");
+        }
+
+        async function epostaIleKayitOl() {
+            const email = document.getElementById('emailInput').value;
+            const password = document.getElementById('passwordInput').value;
+            if (!email || !password) { mesajGoster('authMessage', "Lütfen e-posta ve şifrenizi girin!", "warning"); return; }
+
+            const { data, error } = await supabaseIstemci.auth.signUp({ email: email, password: password });
+            if (error) mesajGoster('authMessage', "Kayıt Hatası: " + error.message, "danger");
+            else {
+                mesajGoster('authMessage', "Kayıt başarılı! Giriş yapılıyor...", "success");
+                setTimeout(() => { modDegistir(); document.getElementById('passwordInput').value = ''; }, 1500);
+            }
+        }
+
+        async function epostaIleGirisYap() {
+            const email = document.getElementById('emailInput').value;
+            const password = document.getElementById('passwordInput').value;
+            if (!email || !password) { mesajGoster('authMessage', "Lütfen e-posta ve şifrenizi girin!", "warning"); return; }
+
+            const { data, error } = await supabaseIstemci.auth.signInWithPassword({ email: email, password: password });
+            if (error) mesajGoster('authMessage', "Giriş başarısız! E-posta veya şifreniz hatalı.", "danger");
+        }
+
+        let portfoyGrafigi = null;
+
+        function metniSayiyaCevir(text) {
             if(!text || text === "0" || text === "---" || text.includes("Bağlanıyor")) return 0;
             let temiz = text.toString().replace(/[₺$\s▲▼]/g, '').trim();
             if (temiz === "---" || temiz === "") return 0;
-            let noktasiz = temiz.replace(/\./g, '');
-            let sayiFormati = noktasiz.replace(',', '.');
+            let sayiFormati = temiz.replace(/\./g, '').replace(',', '.');
             let sonuc = parseFloat(sayiFormati);
             return isNaN(sonuc) ? 0 : sonuc;
         }
 
-        function calcDoviz() {
+        function isleDovizHesapla() {
             let miktar = document.getElementById('calc-miktar').value;
-            let birim = document.getElementById('calc-birim').value;
-            let el = document.getElementById('val-' + birim);
-
-            if (miktar && el) {
-                let kur = temizleVeSayiyaCevir(el.textContent);
-                if (kur === 0) {
-                     alert("Piyasa verileri yükleniyor, lütfen 1-2 saniye bekleyip tekrar deneyin.");
-                     return;
-                }
-                let sonuc = miktar * kur;
-                document.getElementById('doviz-sonuc-text').innerText =
-                    miktar + " " + birim + " = " +
-                    sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+            let birimKodu = document.getElementById('calc-birim').value;
+            let eleman = document.getElementById('val-' + birimKodu);
+            if (miktar && eleman) {
+                let kurDegeri = metniSayiyaCevir(eleman.textContent);
+                if (kurDegeri === 0) { alert("Lütfen bekleyin."); return; }
+                let sonuc = miktar * kurDegeri;
+                document.getElementById('doviz-sonuc-text').innerText = miktar + " " + birimKodu + " = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
                 document.getElementById('doviz-sonuc-box').style.display = 'block';
             }
         }
 
-        function calcAltin() {
+        function isleAltinHesapla() {
             let miktar = document.getElementById('calc-altin-miktar').value;
-            let tur = document.getElementById('calc-altin-turu').value;
-            let el = document.getElementById('val-' + tur);
-
-            if (miktar && el) {
-                let fiyat = temizleVeSayiyaCevir(el.textContent);
-                if (fiyat === 0) {
-                    alert("Piyasa verileri yükleniyor, lütfen 1-2 saniye bekleyip tekrar deneyin.");
-                    return;
-                }
-                let sonuc = miktar * fiyat;
-                let birimText = (tur === "GRAM") ? " Gram" : " Adet";
-                document.getElementById('altin-sonuc-text').innerText =
-                    miktar + birimText + " = " +
-                    sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
+            let altinTuru = document.getElementById('calc-altin-turu').value;
+            let eleman = document.getElementById('val-' + altinTuru);
+            if (miktar && eleman) {
+                let fiyatDegeri = metniSayiyaCevir(eleman.textContent);
+                if (fiyatDegeri === 0) { alert("Lütfen bekleyin."); return; }
+                let sonuc = miktar * fiyatDegeri;
+                let birimMetni = (altinTuru === "GRAM") ? " Gram" : " Adet";
+                document.getElementById('altin-sonuc-text').innerText = miktar + birimMetni + " = " + sonuc.toLocaleString('tr-TR', {minimumFractionDigits: 2}) + " TL";
                 document.getElementById('altin-sonuc-box').style.display = 'block';
             }
         }
 
-        function guncelle() {
-            fetch('/api/fiyatlar')
-                .then(r => r.json())
-                .then(data => {
-                    const veriler = {...data.kurlar, ...data.altin, ...data.kripto};
+        function fiyatlariGuncelle() {
+            fetch('/api/fiyatlar').then(r => r.json()).then(data => {
+                const veriler = {...data.kurlar, ...data.altin, ...data.kripto};
+                Object.keys(veriler).forEach(key => {
+                    let eleman = document.getElementById('val-' + key);
+                    if(eleman) {
+                        let yeniFiyatMetni = veriler[key];
+                        if(yeniFiyatMetni === "---") return;
+                        let yeniFiyatSayisi = metniSayiyaCevir(yeniFiyatMetni);
 
-                    Object.keys(veriler).forEach(key => {
-                        let el = document.getElementById('val-' + key);
-                        if(el) {
-                            let yeniFiyatStr = veriler[key];
-                            if(yeniFiyatStr === "---") return;
+                        if (!(key in oncekiFiyatlar)) oncekiFiyatlar[key] = yeniFiyatSayisi;
 
-                            let yeniFiyatNum = temizleVeSayiyaCevir(yeniFiyatStr);
+                        let oncekiFiyatSayisi = oncekiFiyatlar[key];
+                        let degisimOku = "";
+                        eleman.classList.remove('price-up', 'price-down');
 
-                            if (!(key in eskiFiyatlar)) {
-                                eskiFiyatlar[key] = yeniFiyatNum;
-                            }
+                        if (yeniFiyatSayisi > oncekiFiyatSayisi) { degisimOku = ' ▲'; eleman.classList.add('price-up'); }
+                        else if (yeniFiyatSayisi < oncekiFiyatSayisi) { degisimOku = ' ▼'; eleman.classList.add('price-down'); }
 
-                            let eskiFiyatNum = eskiFiyatlar[key];
-                            let ok = "";
-                            el.classList.remove('price-up', 'price-down');
+                        const DOLAR_BIRIMLERI = ['ONS', 'ONS-GUMUS', 'BTC', 'ETH', 'SOL', 'AVAX', 'DOGE', 'XRP'];
+                        let dolarBirimiMi = DOLAR_BIRIMLERI.includes(key);
+                        eleman.innerHTML = (dolarBirimiMi ? "$" : "") + yeniFiyatMetni + (dolarBirimiMi ? "" : " ₺") + degisimOku;
 
-                            if (yeniFiyatNum > eskiFiyatNum) {
-                                ok = ' ▲';
-                                el.classList.add('price-up');
-                            } else if (yeniFiyatNum < eskiFiyatNum) {
-                                ok = ' ▼';
-                                el.classList.add('price-down');
-                            }
+                        oncekiFiyatlar[key] = yeniFiyatSayisi;
+                    }
+                });
 
-                            // Kripto varlıkları $ işaretine dahil ettik
-                            let dolarMi = (key === 'ONS' || key === 'ONS-GUMUS' || key === 'BTC' || key === 'ETH' || key === 'SOL' || key === 'AVAX' || key === 'DOGE' || key === 'XRP');
-                            let birimSembol = dolarMi ? "" : " ₺";
-                            let gosterilecekMetin = (dolarMi ? "$" : "") + yeniFiyatStr + birimSembol;
+                localStorage.setItem('mbtFiyatHafizasi', JSON.stringify(oncekiFiyatlar));
 
-                            el.innerHTML = gosterilecekMetin + ok;
+                if(document.getElementById('pills-portfoy-tab').classList.contains('active')) {
+                    portfoyVerileriniCek();
+                }
 
-                            if (yeniFiyatNum !== eskiFiyatNum) {
-                                el.classList.add('update-flash');
-                                setTimeout(() => el.classList.remove('update-flash'), 1000);
-                            }
-
-                            eskiFiyatlar[key] = yeniFiyatNum;
-                        }
-                    });
-                })
-                .catch(err => console.error("Veri çekme hatası:", err));
+            }).catch(() => {});
         }
 
-        guncelle();
+        fiyatlariGuncelle();
+        veriGuncellemeTimer = setInterval(fiyatlariGuncelle, GUNCELLEME_ARALIGI_MS);
 
+        const VARLIK_AYARLARI = {
+            'TRY': { isim: 'Türk Lirası', renk: '#17a2b8', birim: 'TL' },
+            'USD': { isim: 'Dolar', renk: '#28a745', birim: 'Dolar' },
+            'EUR': { isim: 'Euro', renk: '#007bff', birim: 'Euro' },
+            'GBP': { isim: 'Sterlin', renk: '#6f42c1', birim: 'Sterlin' },
+            'GRAM': { isim: 'Gram Altın', renk: '#FFD700', birim: 'Gram' },
+            'CEYREK': { isim: 'Çeyrek Altın', renk: '#ffc107', birim: 'Adet' },
+            'ONS-GUMUS': { isim: 'Gümüş', renk: '#C0C0C0', birim: 'Ons' },
+            'BTC': { isim: 'Bitcoin', renk: '#f7931a', birim: 'BTC' },
+            'ETH': { isim: 'Ethereum', renk: '#627eea', birim: 'ETH' },
+            'SOL': { isim: 'Solana', renk: '#14F195', birim: 'SOL' }
+        };
 
-        setInterval(guncelle, 4500);
+        async function portfoyIslem(carpan) {
+            const kod = document.getElementById('yeniVarlikKodu').value;
+            const miktarText = document.getElementById('yeniVarlikMiktar').value;
+            let miktar = parseFloat(miktarText);
+
+            if(!miktar || miktar <= 0) {
+                mesajGoster('varlikMesaj', 'Lütfen sıfırdan büyük bir sayı girin.', 'warning');
+                return;
+            }
+
+            miktar = miktar * carpan;
+
+            const { data: { user } } = await supabaseIstemci.auth.getUser();
+            if(!user) return;
+
+            let gercekTur = 'Kripto';
+            if (['USD', 'EUR', 'GBP'].includes(kod)) gercekTur = 'Doviz';
+            else if (['GRAM', 'ONS-GUMUS', 'CEYREK'].includes(kod)) gercekTur = 'Emtia';
+            else if (kod === 'TRY') gercekTur = 'Nakit';
+
+            const { error } = await supabaseIstemci.from('portfoy').insert([
+                { kullanici_id: user.id, varlik_turu: gercekTur, varlik_kodu: kod, miktar: miktar }
+            ]);
+
+            if(error) {
+                mesajGoster('varlikMesaj', 'İşlem Hatası: ' + error.message, 'danger');
+            } else {
+                let mesaj = carpan > 0 ? 'Varlık cüzdana eklendi!' : 'Varlık cüzdandan çıkarıldı!';
+                mesajGoster('varlikMesaj', mesaj, 'success');
+                document.getElementById('yeniVarlikMiktar').value = '';
+
+                portfoyVerileriniCek();
+                setTimeout(() => { document.getElementById('modal-varlik-kapat').click(); }, 1200);
+            }
+        }
+
+        async function portfoyVerileriniCek() {
+            const { data: { user } } = await supabaseIstemci.auth.getUser();
+            if (!user) return;
+
+            const { data: cuzdan, error } = await supabaseIstemci
+                .from('portfoy')
+                .select('*')
+                .eq('kullanici_id', user.id);
+
+            if (error) return;
+
+            let cuzdanOzet = {};
+            let genelToplam = 0;
+
+            cuzdan.forEach(kalem => {
+                if(!cuzdanOzet[kalem.varlik_kodu]) {
+                    cuzdanOzet[kalem.varlik_kodu] = { miktar: 0, tl: 0 };
+                }
+                cuzdanOzet[kalem.varlik_kodu].miktar += Number(kalem.miktar);
+            });
+
+            const listeElemani = document.getElementById('dinamik-portfoy-listesi');
+            listeElemani.innerHTML = '';
+
+            let chartLabels = [];
+            let chartData = [];
+            let chartColors = [];
+
+            for (const [kod, degerler] of Object.entries(cuzdanOzet)) {
+                if (degerler.miktar <= 0.0001) continue;
+
+                let canliFiyat = kod === 'TRY' ? 1 : (oncekiFiyatlar[kod] || 0);
+                let tlDegeri = degerler.miktar * canliFiyat;
+                genelToplam += tlDegeri;
+
+                let ayar = VARLIK_AYARLARI[kod] || { isim: kod, renk: '#ffffff', birim: 'Adet' };
+                const formatPara = (para) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(para);
+
+                listeElemani.innerHTML += `<li class="mb-2 portfoy-text">
+                    <span class="badge me-2 text-dark" style="background-color: ${ayar.renk};">${ayar.isim}</span>
+                    ${degerler.miktar} ${ayar.birim} (≈ ${formatPara(tlDegeri)} ₺)
+                </li>`;
+
+                chartLabels.push(ayar.isim);
+                chartData.push(tlDegeri);
+                chartColors.push(ayar.renk);
+            }
+
+            const formatParaGenel = (para) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(para);
+            document.getElementById('cuzdan-toplam').innerText = formatParaGenel(genelToplam) + " ₺";
+
+            if (chartLabels.length === 0 || genelToplam === 0) {
+                listeElemani.innerHTML = '<li class="mb-2 portfoy-text"><span class="badge bg-secondary me-2">Boş</span> Cüzdanınızda varlık bulunmuyor.</li>';
+                grafikGuncelle(['Boş Portföy'], [1], ['#333333'], 0);
+            } else {
+                grafikGuncelle(chartLabels, chartData, chartColors, genelToplam);
+            }
+        }
+
+        function grafikGuncelle(labels, data, colors, genelToplam) {
+            const ctx = document.getElementById('portfolioChart').getContext('2d');
+
+            if(portfoyGrafigi) {
+                portfoyGrafigi.data.labels = labels;
+                portfoyGrafigi.data.datasets[0].data = data;
+                portfoyGrafigi.data.datasets[0].backgroundColor = colors;
+                portfoyGrafigi.update('none');
+            } else {
+                portfoyGrafigi = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderWidth: 0,
+                            hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: 'white', font: { size: 14 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        if (genelToplam === 0) return ' Varlık Yok';
+                                        let label = context.label || '';
+                                        if (label) label += ': ';
+                                        if (context.parsed !== null) label += new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(context.parsed);
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function girisSonrasiArayuz(modalKapat = true) {
+            if(modalKapat) {
+                let kapatBtn = document.getElementById('modal-kapat-btn');
+                if(kapatBtn) kapatBtn.click();
+            }
+            document.getElementById('btn-login-modal').classList.add('d-none');
+            document.getElementById('user-profile-menu').classList.remove('d-none');
+
+            document.getElementById('portfoy-nav-item').classList.remove('d-none');
+            document.getElementById('pills-portfoy-tab').click();
+            grafikAlaniniGoster(false);
+
+            setTimeout(portfoyVerileriniCek, 200);
+        }
+
+        function cikisYap() {
+            supabaseIstemci.auth.signOut();
+            document.getElementById('user-profile-menu').classList.add('d-none');
+            document.getElementById('btn-login-modal').classList.remove('d-none');
+            document.getElementById('portfoy-nav-item').classList.add('d-none');
+
+            document.getElementById('pills-doviz-tab').click();
+            grafikAlaniniGoster(true);
+
+            document.getElementById('kullanici-adi').innerHTML = `Yatırımcı`;
+        }
+
+        async function isimGuncelle() {
+            const yeniIsim = document.getElementById('ayar-isim').value;
+            if(!yeniIsim) {
+                mesajGoster('ayarlarMesaj', 'Lütfen bir isim girin.', 'warning');
+                return;
+            }
+
+            const { data, error } = await supabaseIstemci.auth.updateUser({
+                data: { full_name: yeniIsim }
+            });
+
+            if(error) {
+                mesajGoster('ayarlarMesaj', 'Hata oluştu: ' + error.message, 'danger');
+            } else {
+                document.getElementById('kullanici-adi').innerText = yeniIsim;
+
+                let avatarUrl = `https://ui-avatars.com/api/?name=${yeniIsim}&background=random&color=fff&rounded=true`;
+                const { data: { user } } = await supabaseIstemci.auth.getUser();
+                if(!user.user_metadata.avatar_url) {
+                    document.getElementById('profil-resmi').src = avatarUrl;
+                }
+
+                mesajGoster('ayarlarMesaj', 'İsminiz başarıyla güncellendi!', 'success');
+            }
+        }
+
+        function hizGuncelle() {
+            const yeniHiz = document.getElementById('ayar-hiz').value;
+            GUNCELLEME_ARALIGI_MS = parseInt(yeniHiz);
+
+            localStorage.setItem('mbtYenilemeHizi', GUNCELLEME_ARALIGI_MS);
+
+            clearInterval(veriGuncellemeTimer);
+            veriGuncellemeTimer = setInterval(fiyatlariGuncelle, GUNCELLEME_ARALIGI_MS);
+
+            mesajGoster('ayarlarMesaj', 'Yenileme hızı başarıyla değiştirildi!', 'success');
+        }
+
+        async function cuzdanSifirla() {
+            let onay = confirm("Dikkat! Tüm portföy verileriniz kalıcı olarak silinecek. Emin misiniz?");
+            if(!onay) return;
+
+            const { data: { user } } = await supabaseIstemci.auth.getUser();
+            if(!user) return;
+
+            const { error } = await supabaseIstemci
+                .from('portfoy')
+                .delete()
+                .eq('kullanici_id', user.id);
+
+            if(error) {
+                mesajGoster('ayarlarMesaj', 'Silme hatası: ' + error.message, 'danger');
+            } else {
+                mesajGoster('ayarlarMesaj', 'Cüzdanınız tamamen sıfırlandı!', 'success');
+                portfoyVerileriniCek();
+            }
+        }
     </script>
 </body>
 </html>

@@ -2,119 +2,137 @@ import os
 import requests
 from flask import Flask, render_template, jsonify
 from bs4 import BeautifulSoup
+from supabase import create_client, Client
 
 app = Flask(__name__)
+SUPABASE_URL="https://ebyinbdxwjyhcmivtluq.supabase.co"
+SUPABASE_KEY = "ebyinbdxwjyhcmivtluq"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# BAŞLANGIÇTA VERİLERİ BOŞ TANIMLIYORUZ (Render'ın anında açılması için)
-son_veriler = {
-    "kurlar": {"USD": "...", "EUR": "...", "GBP": "...", "JPY": "...", "PLN": "...", "CHF": "..."},
-    "altin": {"GRAM": "...", "CEYREK": "...", "YARIM": "...", "TAM": "...", "ATA": "...", "CUMHURIYET": "...", "ONS": "...", "ONS-GUMUS": "..."},
-    "kripto": {"BTC": "...", "ETH": "...", "DOGE": "..."}
+ISTEK_ZAMAN_ASIMI = 5
+VARSAYILAN_PORT = 5000
+VERI_YUKLENIYOR = "..."
+VERI_YOK = "---"
+HTTP_BASARILI = 200
+DUSUK_FIYATLI_SEMBOLLER = ["DOGEUSDT", "XRPUSDT"]
+
+TARAYICI_BASLIGI = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
 }
 
-def verileri_kazi():
-    global son_veriler
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    }
+uygulama = Flask(__name__, template_folder='templates', static_folder='static')
+
+sonVeriler = {
+    "kurlar": {"USD": VERI_YUKLENIYOR, "EUR": VERI_YUKLENIYOR, "GBP": VERI_YUKLENIYOR, "JPY": VERI_YUKLENIYOR, "PLN": VERI_YUKLENIYOR, "CHF": VERI_YUKLENIYOR},
+    "altin": {"GRAM": VERI_YUKLENIYOR, "CEYREK": VERI_YUKLENIYOR, "YARIM": VERI_YUKLENIYOR, "TAM": VERI_YUKLENIYOR, "ATA": VERI_YUKLENIYOR, "CUMHURIYET": VERI_YUKLENIYOR, "ONS": VERI_YUKLENIYOR, "ONS-GUMUS": VERI_YUKLENIYOR},
+    "kripto": {"BTC": VERI_YUKLENIYOR, "ETH": VERI_YUKLENIYOR, "SOL": VERI_YUKLENIYOR, "AVAX": VERI_YUKLENIYOR, "DOGE": VERI_YUKLENIYOR, "XRP": VERI_YUKLENIYOR}
+}
+
+def fiyatiFormatla(fiyatDegeri, sembol):
+    if sembol in DUSUK_FIYATLI_SEMBOLLER:
+        return "{:.4f}".format(fiyatDegeri).replace('.', ',')
+    return "{:,.2f}".format(fiyatDegeri).replace(',', 'X').replace('.', ',').replace('X', '.')
+
+def dovizComSayfasindanCek(kurlar, altin):
+    try:
+        dovizCevap = requests.get("https://www.doviz.com", headers=TARAYICI_BASLIGI, timeout=ISTEK_ZAMAN_ASIMI)
+        dovizSayfa = BeautifulSoup(dovizCevap.content, "html.parser")
+        def dovizDegeriBul(anahtar):
+            eleman = dovizSayfa.find("span", {"data-socket-key": anahtar})
+            return eleman.text.strip() if eleman else VERI_YOK
+        kurlar["USD"] = dovizDegeriBul("USD")
+        kurlar["EUR"] = dovizDegeriBul("EUR")
+        kurlar["GBP"] = dovizDegeriBul("GBP")
+        altin["GRAM"] = dovizDegeriBul("gram-altin")
+    except: pass
+
+def truncgilApisindenCek(altin):
+    try:
+        apiCevap = requests.get("https://finans.truncgil.com/v3/today.json", timeout=ISTEK_ZAMAN_ASIMI)
+        if apiCevap.status_code == HTTP_BASARILI:
+            apiVerisi = apiCevap.json()
+            altin["CEYREK"] = apiVerisi.get("ceyrek-altin", {}).get("Selling", VERI_YOK)
+            altin["YARIM"] = apiVerisi.get("yarim-altin", {}).get("Selling", VERI_YOK)
+            altin["TAM"] = apiVerisi.get("tam-altin", {}).get("Selling", VERI_YOK)
+            altin["ATA"] = apiVerisi.get("ata-altin", {}).get("Selling", VERI_YOK)
+            altin["CUMHURIYET"] = apiVerisi.get("cumhuriyet-altini", {}).get("Selling", VERI_YOK)
+    except: pass
+
+def mynetSayfasindenCek(kurlar):
+    try:
+        mynetCevap = requests.get("https://finans.mynet.com/doviz/", headers=TARAYICI_BASLIGI, timeout=ISTEK_ZAMAN_ASIMI)
+        mynetSayfa = BeautifulSoup(mynetCevap.content, "html.parser")
+        baglanti = mynetSayfa.find("a", href=lambda x: x and "japon-yeni" in x)
+        if baglanti:
+            satir = baglanti.find_parent("tr")
+            kurlar["JPY"] = satir.find_all("td")[2].text.strip() if satir else VERI_YOK
+    except:
+        kurlar["JPY"] = VERI_YOK
+
+def paratictenCek(yol):
+    try:
+        cevap = requests.get(f"https://piyasa.paratic.com/{yol}", headers=TARAYICI_BASLIGI, timeout=ISTEK_ZAMAN_ASIMI)
+        if cevap.status_code == HTTP_BASARILI:
+            sayfa = BeautifulSoup(cevap.content, "html.parser")
+            eleman = sayfa.find("div", {"class": "price"})
+            return eleman.text.strip().replace("$", "").split('\n')[0] if eleman else VERI_YOK
+        return VERI_YOK
+    except:
+        return VERI_YOK
+
+def paraticSayfalarindenCek(kurlar, altin):
+    altin["ONS"] = paratictenCek("altin/ons/")
+    altin["ONS-GUMUS"] = paratictenCek("forex/emtia/gumus-ons/")
+    kurlar["PLN"] = paratictenCek("doviz/polonya-zlotisi/").replace('.', ',')
+    kurlar["CHF"] = paratictenCek("doviz/isvicre-frangi/").replace('.', ',')
+
+def kriptoFiyatCek(sembol):
+    try:
+        cevap = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={sembol}", timeout=ISTEK_ZAMAN_ASIMI)
+        fiyatDegeri = float(cevap.json()["price"])
+        return fiyatiFormatla(fiyatDegeri, sembol)
+    except:
+        return VERI_YOK
+
+def binancedenKriptoVerileriniCek(kripto):
+    kripto["BTC"] = kriptoFiyatCek("BTCUSDT")
+    kripto["ETH"] = kriptoFiyatCek("ETHUSDT")
+    kripto["SOL"] = kriptoFiyatCek("SOLUSDT")
+    kripto["AVAX"] = kriptoFiyatCek("AVAXUSDT")
+    kripto["DOGE"] = kriptoFiyatCek("DOGEUSDT")
+    kripto["XRP"] = kriptoFiyatCek("XRPUSDT")
+
+def verileriCek():
+    global sonVeriler
     kurlar = {}
     altin = {}
     kripto = {}
 
     try:
-        # --- 1. KAYNAK: DOVIZ.COM ---
-        try:
-            res_doviz = requests.get("https://www.doviz.com", headers=headers, timeout=5)
-            soup_doviz = BeautifulSoup(res_doviz.content, "html.parser")
-            def doviz_bul(key):
-                el = soup_doviz.find("span", {"data-socket-key": key})
-                return el.text.strip() if el else "---"
+        dovizComSayfasindanCek(kurlar, altin)
+        truncgilApisindenCek(altin)
+        mynetSayfasindenCek(kurlar)
+        paraticSayfalarindenCek(kurlar, altin)
+        binancedenKriptoVerileriniCek(kripto)
 
-            kurlar["USD"] = doviz_bul("USD")
-            kurlar["EUR"] = doviz_bul("EUR")
-            kurlar["GBP"] = doviz_bul("GBP")
-            altin["GRAM"] = doviz_bul("gram-altin")
-        except: pass
-
-        # --- 2. KAYNAK: TRUNCGIL API ---
-        try:
-            res_api = requests.get("https://finans.truncgil.com/v3/today.json", timeout=5)
-            if res_api.status_code == 200:
-                veri = res_api.json()
-                altin["CEYREK"] = veri.get("ceyrek-altin", {}).get("Selling", "---")
-                altin["YARIM"] = veri.get("yarim-altin", {}).get("Selling", "---")
-                altin["TAM"] = veri.get("tam-altin", {}).get("Selling", "---")
-                altin["ATA"] = veri.get("ata-altin", {}).get("Selling", "---")
-                altin["CUMHURIYET"] = veri.get("cumhuriyet-altini", {}).get("Selling", "---")
-        except: pass
-
-        # --- 3. KAYNAK: MYNET ---
-        try:
-            res_m = requests.get("https://finans.mynet.com/doviz/", headers=headers, timeout=5)
-            soup_m = BeautifulSoup(res_m.content, "html.parser")
-            link = soup_m.find("a", href=lambda x: x and "japon-yeni" in x)
-            if link:
-                satir = link.find_parent("tr")
-                kurlar["JPY"] = satir.find_all("td")[2].text.strip() if satir else "---"
-        except: kurlar["JPY"] = "---"
-
-        # --- 4. KAYNAK: PARATIC ---
-        def paratic_cek(path):
-            try:
-                res = requests.get(f"https://piyasa.paratic.com/{path}", headers=headers, timeout=5)
-                if res.status_code == 200:
-                    soup = BeautifulSoup(res.content, "html.parser")
-                    el = soup.find("div", {"class": "price"})
-                    return el.text.strip().replace("$", "").split('\n')[0] if el else "---"
-                return "---"
-            except: return "---"
-
-        altin["ONS"] = paratic_cek("altin/ons/")
-        altin["ONS-GUMUS"] = paratic_cek("forex/emtia/gumus-ons/")
-        kurlar["PLN"] = paratic_cek("doviz/polonya-zlotisi/").replace('.', ',')
-        kurlar["CHF"] = paratic_cek("doviz/isvicre-frangi/").replace('.', ',')
-
-        # --- 5. KAYNAK: BINANCE API (KRİPTO PARALAR) ---
-        # --- 5. KAYNAK: BINANCE API (KRİPTO VARLIKLAR) ---
-        def kripto_cek(symbol):
-            try:
-                res = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}", timeout=5)
-                fiyat = float(res.json()["price"])
-                # Dogecoin ve Ripple gibi ucuz coinlerde 4 küsurat gösterilsin
-                if symbol in ["DOGEUSDT", "XRPUSDT"]:
-                    return "{:.4f}".format(fiyat).replace('.', ',')
-                else:
-                    return "{:,.2f}".format(fiyat).replace(',', 'X').replace('.', ',').replace('X', '.')
-            except:
-                return "---"
-
-        kripto["BTC"] = kripto_cek("BTCUSDT")
-        kripto["ETH"] = kripto_cek("ETHUSDT")
-        kripto["SOL"] = kripto_cek("SOLUSDT")
-        kripto["AVAX"] = kripto_cek("AVAXUSDT")
-        kripto["DOGE"] = kripto_cek("DOGEUSDT")
-        kripto["XRP"] = kripto_cek("XRPUSDT")
-
-
-        son_veriler["kurlar"] = kurlar
-        son_veriler["altin"] = altin
-        son_veriler["kripto"] = kripto
+        sonVeriler["kurlar"] = kurlar
+        sonVeriler["altin"] = altin
+        sonVeriler["kripto"] = kripto
         return kurlar, altin, kripto
-    except Exception as e:
-        print(f"Hata: {e}")
-        return son_veriler["kurlar"], son_veriler["altin"], son_veriler["kripto"]
+    except Exception:
+        return sonVeriler["kurlar"], sonVeriler["altin"], sonVeriler["kripto"]
 
-@app.route("/")
-def index():
-    if son_veriler["kurlar"].get("USD") == "...":
-        verileri_kazi()
-    return render_template("index.html", kurlar=son_veriler["kurlar"], altin_fiyatlari=son_veriler["altin"], kripto_fiyatlari=son_veriler["kripto"])
+@uygulama.route("/")
+def anaSayfa():
+    if sonVeriler["kurlar"].get("USD") == VERI_YUKLENIYOR:
+        verileriCek()
+    return render_template("index.html", kurlar=sonVeriler["kurlar"], altin_fiyatlari=sonVeriler["altin"], kripto_fiyatlari=sonVeriler["kripto"])
 
-@app.route("/api/fiyatlar")
-def api_fiyatlar():
-    verileri_kazi()
-    return jsonify(son_veriler)
+@uygulama.route("/api/fiyatlar")
+def apiFiyatlar():
+    verileriCek()
+    return jsonify(sonVeriler)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    varsayilanPort = int(os.environ.get("PORT", VARSAYILAN_PORT))
+    uygulama.run(host="0.0.0.0", port=varsayilanPort, debug=False)
