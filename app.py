@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 from flask import Flask, render_template, jsonify
 from bs4 import BeautifulSoup
@@ -11,12 +12,17 @@ SUPABASE_URL="https://ebyinbdxwjyhcmivtluq.supabase.co"
 SUPABASE_KEY = "ebyinbdxwjyhcmivtluq"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-ISTEK_ZAMAN_ASIMI = 5
+# --- SİSTEM AYARLARI ---
+ISTEK_ZAMAN_ASIMI = 4 # Dış siteleri bekleme süresini 4 saniyeye çektik ki sunucu tıkanmasın
 VARSAYILAN_PORT = 5000
 VERI_YUKLENIYOR = "..."
 VERI_YOK = "---"
 HTTP_BASARILI = 200
 DUSUK_FIYATLI_SEMBOLLER = ["DOGEUSDT", "XRPUSDT"]
+
+# --- AKILLI ÖNBELLEK (CACHE) AYARLARI ---
+SON_GUNCELLEME_ZAMANI = 0
+CACHE_SURESI = 15 # Dışarıdaki sitelere (Mynet, Binance vb.) en erken 15 saniyede bir sorulacak
 
 TARAYICI_BASLIGI = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -66,8 +72,7 @@ def mynetSayfasindenCek(kurlar):
         if baglanti:
             satir = baglanti.find_parent("tr")
             kurlar["JPY"] = satir.find_all("td")[2].text.strip() if satir else VERI_YOK
-    except:
-        kurlar["JPY"] = VERI_YOK
+    except: pass
 
 def paratictenCek(yol):
     try:
@@ -81,10 +86,12 @@ def paratictenCek(yol):
         return VERI_YOK
 
 def paraticSayfalarindenCek(kurlar, altin):
-    altin["ONS"] = paratictenCek("altin/ons/")
-    altin["ONS-GUMUS"] = paratictenCek("forex/emtia/gumus-ons/")
-    kurlar["PLN"] = paratictenCek("doviz/polonya-zlotisi/").replace('.', ',')
-    kurlar["CHF"] = paratictenCek("doviz/isvicre-frangi/").replace('.', ',')
+    try:
+        altin["ONS"] = paratictenCek("altin/ons/")
+        altin["ONS-GUMUS"] = paratictenCek("forex/emtia/gumus-ons/")
+        kurlar["PLN"] = paratictenCek("doviz/polonya-zlotisi/").replace('.', ',')
+        kurlar["CHF"] = paratictenCek("doviz/isvicre-frangi/").replace('.', ',')
+    except: pass
 
 def kriptoFiyatCek(sembol):
     try:
@@ -95,18 +102,29 @@ def kriptoFiyatCek(sembol):
         return VERI_YOK
 
 def binancedenKriptoVerileriniCek(kripto):
-    kripto["BTC"] = kriptoFiyatCek("BTCUSDT")
-    kripto["ETH"] = kriptoFiyatCek("ETHUSDT")
-    kripto["SOL"] = kriptoFiyatCek("SOLUSDT")
-    kripto["AVAX"] = kriptoFiyatCek("AVAXUSDT")
-    kripto["DOGE"] = kriptoFiyatCek("DOGEUSDT")
-    kripto["XRP"] = kriptoFiyatCek("XRPUSDT")
+    try:
+        kripto["BTC"] = kriptoFiyatCek("BTCUSDT")
+        kripto["ETH"] = kriptoFiyatCek("ETHUSDT")
+        kripto["SOL"] = kriptoFiyatCek("SOLUSDT")
+        kripto["AVAX"] = kriptoFiyatCek("AVAXUSDT")
+        kripto["DOGE"] = kriptoFiyatCek("DOGEUSDT")
+        kripto["XRP"] = kriptoFiyatCek("XRPUSDT")
+    except: pass
 
 def verileriCek():
-    global sonVeriler
-    kurlar = {}
-    altin = {}
-    kripto = {}
+    global sonVeriler, SON_GUNCELLEME_ZAMANI
+    su_an = time.time()
+
+    # Eğer son sorgunun üzerinden 15 saniye geçmediyse, dışarı gitme.
+    # Kendi hafızandaki veriyi yolla gitsin (Sunucuyu yormaz, 0 saniye sürer)
+    if su_an - SON_GUNCELLEME_ZAMANI < CACHE_SURESI:
+        return
+
+    # KOPYA ALIYORUZ: Eğer sitelerden biri o an çökmüşse, elimizdeki eski fiyatları
+    # silmemek için kopyasını oluşturup onun üzerinde güncelliyoruz.
+    kurlar = sonVeriler["kurlar"].copy()
+    altin = sonVeriler["altin"].copy()
+    kripto = sonVeriler["kripto"].copy()
 
     try:
         dovizComSayfasindanCek(kurlar, altin)
@@ -118,23 +136,23 @@ def verileriCek():
         sonVeriler["kurlar"] = kurlar
         sonVeriler["altin"] = altin
         sonVeriler["kripto"] = kripto
-        return kurlar, altin, kripto
-    except Exception:
-        return sonVeriler["kurlar"], sonVeriler["altin"], sonVeriler["kripto"]
+        SON_GUNCELLEME_ZAMANI = time.time() # Zamanı başarıyla güncelledik
+    except Exception as e:
+        print("Veri çekerken arka plan hatası:", e)
+        # Hata çıksa bile sistem çökmez, eski "sonVeriler" aynen kalır.
 
-# Rotalar @app.route olarak düzeltildi
 @app.route("/")
 def anaSayfa():
+    # İlk girişte boş kalmasın diye bir kez çek
     if sonVeriler["kurlar"].get("USD") == VERI_YUKLENIYOR:
         verileriCek()
     return render_template("index.html", kurlar=sonVeriler["kurlar"], altin_fiyatlari=sonVeriler["altin"], kripto_fiyatlari=sonVeriler["kripto"])
 
 @app.route("/api/fiyatlar")
 def apiFiyatlar():
-    verileriCek()
+    verileriCek() # Sadece 15 saniye geçtiyse dışarı çıkar, yoksa anında cevap verir
     return jsonify(sonVeriler)
 
-# Çalıştırma komutu app.run olarak düzeltildi
 if __name__ == "__main__":
     varsayilanPort = int(os.environ.get("PORT", VARSAYILAN_PORT))
     app.run(host="0.0.0.0", port=varsayilanPort, debug=False)

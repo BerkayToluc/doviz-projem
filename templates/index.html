@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>MBT Finans Terminali</title>
-    <link rel="icon" href="{{ url_for('static', filename='icon.png') }}" type="image/png">
+    <link rel="icon" href="{{ url_for('static', filename='icon2.png') }}" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.0.0/css/flag-icons.min.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -94,7 +94,7 @@
             <div class="col-md-3 text-start d-none d-md-block"></div>
             <div class="col-md-5 text-center">
                 <h1 class="header-title d-inline-flex align-items-center pb-2 mb-0">
-                    <img src="{{ url_for('static', filename='icon.png') }}" alt="MBT Logo" style="width: 60px; height: 60px; margin-right: 15px; border-radius: 8px;">
+                    <img src="{{ url_for('static', filename='icon2.png') }}" alt="MBT Logo" style="width: 70px; height: 70px; margin-right: 15px; border-radius: 8px;">
                     MBT Finans Terminali
                 </h1>
             </div>
@@ -144,6 +144,8 @@
                                         <option value="EUR">Euro (EUR)</option>
                                         <option value="GBP">Sterlin (GBP)</option>
                                         <option value="CHF">İsviçre Frangı (CHF)</option>
+                                        <option value="JPY">Japon Yeni (JPY)</option>
+                                        <option value="PLN">Polonya Zlotisi (PLN)</option>
                                     </select>
                                     <button class="btn btn-primary w-100 fw-bold" id="btn-doviz-hesapla" onclick="isleDovizHesapla()">TL'YE ÇEVİR</button>
                                     <div id="doviz-sonuc-box" class="alert alert-info mt-3 bg-primary text-white border-0" style="display:none;"><span id="doviz-sonuc-text"></span></div>
@@ -155,7 +157,7 @@
                                     {% for doviz_kod, isim, bayrak in [('USD','USD / TRY','us'), ('EUR','EUR / TRY','eu'), ('GBP','GBP / TRY','gb'), ('CHF','CHF / TRY','ch'), ('JPY','JPY / TRY','jp'), ('PLN','PLN / TRY','pl')] %}
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
                                         <span class="text-bright fs-5"><span class="fi fi-{{bayrak}} me-2"></span> {{isim}}</span>
-                                        <span class="price-tag fs-5" id="val-{{doviz_kod}}">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-{{doviz_kod}}">---</span>
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -168,12 +170,14 @@
                             <div class="col-md-6">
                                 <div class="card p-4 h-100">
                                     <h3 class="text-bright mb-3 text-warning">✨ Kıymetli Maden Hesapla</h3>
-                                    <input type="number" id="calc-altin-miktar" class="form-control mb-3 dark-input" placeholder="Adet veya Gram" onkeypress="enterTetikle(event, 'btn-altin-hesapla')">
+                                    <input type="number" id="calc-altin-miktar" class="form-control mb-3 dark-input" placeholder="Miktar Giriniz" onkeypress="enterTetikle(event, 'btn-altin-hesapla')">
                                     <select id="calc-altin-turu" class="form-select mb-3 dark-input" onkeypress="enterTetikle(event, 'btn-altin-hesapla')">
                                         <option value="GRAM">Gram Altın</option>
                                         <option value="CEYREK">Çeyrek Altın</option>
                                         <option value="YARIM">Yarım Altın</option>
                                         <option value="TAM">Tam Altın</option>
+                                        <option value="ONS">Ons Altın (USD)</option>
+                                        <option value="ONS-GUMUS">Ons Gümüş (USD)</option>
                                     </select>
                                     <button class="btn btn-warning w-100 fw-bold" id="btn-altin-hesapla" onclick="isleAltinHesapla()">HESAPLA</button>
                                     <div id="altin-sonuc-box" class="alert alert-warning mt-3 bg-warning text-dark border-0" style="display:none;"><span id="altin-sonuc-text"></span></div>
@@ -184,21 +188,21 @@
                                     <h3 class="text-warning mb-3">🏆 Emtia Piyasaları</h3>
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
                                         <span class="text-warning fs-5">🏆 Gram Altın</span>
-                                        <span class="price-tag fs-5" id="val-GRAM">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-GRAM">---</span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
                                         <span class="text-info fs-5">🌍 Ons Altın (XAU)</span>
-                                        <span class="price-tag fs-5" id="val-ONS">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-ONS">---</span>
                                     </div>
                                     {% for altin_kod, isim in [('CEYREK', 'Çeyrek Altın'), ('YARIM', 'Yarım Altın'), ('TAM', 'Tam Altın')] %}
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
                                         <span class="text-bright fs-5">🟡 {{isim}}</span>
-                                        <span class="price-tag fs-5" id="val-{{altin_kod}}">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-{{altin_kod}}">---</span>
                                     </div>
                                     {% endfor %}
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span style="color: #C0C0C0;" class="text-bright fs-5">🥈 Ons Gümüş (XAG)</span>
-                                        <span class="price-tag fs-5" id="val-ONS-GUMUS">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-ONS-GUMUS">---</span>
                                     </div>
                                 </div>
                             </div>
@@ -228,27 +232,27 @@
                                     <h3 class="text-info mb-4">🪙 Kripto Varlıklar (USDT)</h3>
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
                                         <span class="text-bright fs-5" style="color: #F7931A !important;">₿ Bitcoin (BTC)</span>
-                                        <span class="price-tag fs-5" id="val-BTC">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-BTC">---</span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
                                         <span class="text-bright fs-5" style="color: #627EEA !important;">⟠ Ethereum (ETH)</span>
-                                        <span class="price-tag fs-5" id="val-ETH">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-ETH">---</span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
                                         <span class="text-bright fs-5" style="color: #14F195 !important;">◎ Solana (SOL)</span>
-                                        <span class="price-tag fs-5" id="val-SOL">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-SOL">---</span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
                                         <span class="text-bright fs-5" style="color: #E84142 !important;">🔺 Avalanche (AVAX)</span>
-                                        <span class="price-tag fs-5" id="val-AVAX">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-AVAX">---</span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
                                         <span class="text-bright fs-5" style="color: #C2A633 !important;">🐕 Dogecoin (DOGE)</span>
-                                        <span class="price-tag fs-5" id="val-DOGE">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-DOGE">---</span>
                                     </div>
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span class="text-bright fs-5" style="color: #888888 !important;">✕ Ripple (XRP)</span>
-                                        <span class="price-tag fs-5" id="val-XRP">⏳ Bekleniyor...</span>
+                                        <span class="price-tag fs-5" id="val-XRP">---</span>
                                     </div>
                                 </div>
                             </div>
@@ -350,7 +354,7 @@
                                 <option value="TRY">Türk Lirası (TL)</option>
                             </optgroup>
                             <optgroup label="💱 Dövizler">
-                                <option value="USD">Dolar (USD)</option><option value="EUR">Euro (EUR)</option><option value="GBP">Sterlin (GBP)</option><option value="CHF">İsviçre Frangı (CHF)</option>
+                                <option value="USD">Dolar (USD)</option><option value="EUR">Euro (EUR)</option><option value="GBP">Sterlin (GBP)</option><option value="CHF">İsviçre Frangı (CHF)</option><option value="JPY">Japon Yeni (JPY)</option><option value="PLN">Polonya Zlotisi (PLN)</option>
                             </optgroup>
                             <optgroup label="🏆 Emtialar">
                                 <option value="GRAM">Gram Altın</option>
@@ -388,7 +392,7 @@
                                 <option value="TRY">Türk Lirası (TL)</option>
                             </optgroup>
                             <optgroup label="💱 Dövizler">
-                                <option value="USD">Dolar (USD)</option><option value="EUR">Euro (EUR)</option><option value="GBP">Sterlin (GBP)</option><option value="CHF">İsviçre Frangı (CHF)</option>
+                                <option value="USD">Dolar (USD)</option><option value="EUR">Euro (EUR)</option><option value="GBP">Sterlin (GBP)</option><option value="CHF">İsviçre Frangı (CHF)</option><option value="JPY">Japon Yeni (JPY)</option><option value="PLN">Polonya Zlotisi (PLN)</option>
                             </optgroup>
                             <optgroup label="🏆 Emtialar">
                                 <option value="GRAM">Gram Altın</option>
@@ -513,7 +517,6 @@
             tradingViewWidgetYukle(yeniTema);
         }
 
-        // GÜNCELLEME: İstenilen semboller grafiğe eklendi
         function tradingViewWidgetYukle(tema) {
             const newsContainer = document.getElementById('tv-news-container');
             if (newsContainer) {
@@ -571,7 +574,9 @@
             }
         }
 
-        function oturumuSifirla() {
+        // GÜNCELLEME: Kapanan sekmeleri ve uzun bekleyişleri de anlayan yeni "Akıllı Otomatik Çıkış" sistemi
+        function etkinligiGuncelle() {
+            localStorage.setItem('mbtSonAktivite', Date.now()); // Son fare/klavye hareketinin saatini kaydet
             clearTimeout(oturumZamanlayici);
             if (!document.getElementById('user-profile-menu').classList.contains('d-none')) {
                 oturumZamanlayici = setTimeout(() => {
@@ -581,10 +586,20 @@
             }
         }
 
-        window.onload = oturumuSifirla;
-        document.onmousemove = oturumuSifirla;
-        document.onkeypress = oturumuSifirla;
-        document.onclick = oturumuSifirla;
+        window.onload = function() {
+            // Site yüklendiğinde, son hareketten bu yana ne kadar zaman geçmiş kontrol et
+            let sonAktivite = localStorage.getItem('mbtSonAktivite');
+            if (sonAktivite && (Date.now() - parseInt(sonAktivite) > ZAMAN_ASIMI_SURESI)) {
+                cikisYap(); // Süre dolduysa anında dışarı at
+                setTimeout(() => alert("Uzun süre işlem yapmadığınız için oturumunuz kapatıldı."), 500);
+            }
+            etkinligiGuncelle();
+        };
+
+        // Kullanıcının her hareketi sistemi "uyanık" tutar
+        document.onmousemove = etkinligiGuncelle;
+        document.onkeypress = etkinligiGuncelle;
+        document.onclick = etkinligiGuncelle;
 
         function enterTetikle(event, butonId) {
             if (event.key === "Enter") {
@@ -638,7 +653,7 @@
 
                     kaliciIsmiGetir(session.user);
                     girisSonrasiArayuz();
-                    oturumuSifirla();
+                    etkinligiGuncelle();
                 }
             } else if (event === 'SIGNED_OUT') {
                 cikisSonrasiArayuz();
@@ -733,7 +748,7 @@
         function zamanAsimiGuncelle() {
             ZAMAN_ASIMI_SURESI = parseInt(document.getElementById('ayar-zaman-asimi').value);
             localStorage.setItem('mbtZamanAsimi', ZAMAN_ASIMI_SURESI);
-            oturumuSifirla();
+            etkinligiGuncelle();
             mesajGoster('guvenlikMesaj', 'Süre güncellendi!', 'success');
         }
 
@@ -762,7 +777,13 @@
             if (miktar && el) {
                 let fiyat = metniSayiyaCevir(el.textContent);
                 if (fiyat === 0) return alert("Bekleyin.");
-                document.getElementById('altin-sonuc-text').innerText = `${miktar} ${kod === 'GRAM' ? 'Gram' : 'Adet'} = ${(miktar * fiyat).toLocaleString('tr-TR', {minimumFractionDigits: 2})} TL`;
+
+                let birimTipi = (kod === 'GRAM') ? 'Gram' : (kod.includes('ONS') ? 'Ons' : 'Adet');
+                let paraBirimi = kod.includes('ONS') ? '$' : 'TL';
+                let isaret = paraBirimi === '$' ? '$' : '';
+                let sonEk = paraBirimi === 'TL' ? ' TL' : '';
+
+                document.getElementById('altin-sonuc-text').innerText = `${miktar} ${birimTipi} = ${isaret}${(miktar * fiyat).toLocaleString('tr-TR', {minimumFractionDigits: 2})}${sonEk}`;
                 document.getElementById('altin-sonuc-box').style.display = 'block';
             }
         }
@@ -786,7 +807,7 @@
                     let eleman = document.getElementById('val-' + key);
                     if(eleman) {
                         let yeniFiyatMetni = veriler[key];
-                        if(yeniFiyatMetni === "---") return;
+                        if(yeniFiyatMetni === "---") return
                         let yeniFiyatSayisi = metniSayiyaCevir(yeniFiyatMetni);
 
                         if (!(key in oncekiFiyatlar)) oncekiFiyatlar[key] = yeniFiyatSayisi;
@@ -808,6 +829,20 @@
             }).catch(() => {});
         }
 
+        function hafizadanFiyatlariBas() {
+            const DOLAR_BIRIMLERI = ['ONS', 'ONS-GUMUS', 'BTC', 'ETH', 'SOL', 'AVAX', 'DOGE', 'XRP'];
+            Object.keys(oncekiFiyatlar).forEach(key => {
+                let eleman = document.getElementById('val-' + key);
+                if (eleman && oncekiFiyatlar[key]) {
+                    let formatliEskiFiyat = oncekiFiyatlar[key].toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+                    eleman.innerHTML = (DOLAR_BIRIMLERI.includes(key) ? "$" : "") + formatliEskiFiyat + (DOLAR_BIRIMLERI.includes(key) ? "" : " ₺");
+                    /* GÜNCELLEME: Gri renk stilini kaldırdık, artık orijinal beyaz renginde görünecek */
+                }
+            });
+            if(document.getElementById('pills-portfoy-tab').classList.contains('active')) portfoyVerileriniCek();
+        }
+
+        hafizadanFiyatlariBas();
         fiyatlariGuncelle();
         veriGuncellemeTimer = setInterval(fiyatlariGuncelle, GUNCELLEME_ARALIGI_MS);
 
