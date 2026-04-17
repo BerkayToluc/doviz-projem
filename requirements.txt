@@ -4,3 +4,4 @@ beautifulsoup4
 gunicorn
 supabase
 cloudscraper
+python-dotenv
