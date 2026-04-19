@@ -340,6 +340,7 @@
                                         <option value="CEYREK">Çeyrek Altın</option>
                                         <option value="YARIM">Yarım Altın</option>
                                         <option value="TAM">Tam Altın</option>
+                                        <option value="ATA">Ata Altın</option>
                                         <option value="ONS">Ons Altın (USD)</option>
                                         <option value="ONS-GUMUS">Ons Gümüş (USD)</option>
                                         <option value="BRENT">Brent Petrol</option>
@@ -360,7 +361,7 @@
                                         <span class="text-info fs-5"><i class="bi bi-globe-americas text-info me-2" style="font-size: 0.9rem;"></i> Ons Altın (XAU)</span>
                                         <span class="price-tag fs-5" id="val-ONS">---</span>
                                     </div>
-                                    {% for altin_kod, isim in [('CEYREK', 'Çeyrek Altın'), ('YARIM', 'Yarım Altın'), ('TAM', 'Tam Altın')] %}
+                                    {% for altin_kod, isim in [('CEYREK', 'Çeyrek Altın'), ('YARIM', 'Yarım Altın'), ('TAM', 'Tam Altın'), ('ATA', 'Ata Altın')] %}
                                     <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary">
                                         <span class="text-bright fs-5"><i class="bi bi-circle-fill text-warning me-2" style="font-size: 0.6rem; vertical-align: middle;"></i> {{isim}}</span>
                                         <span class="price-tag fs-5" id="val-{{altin_kod}}">---</span>
@@ -588,7 +589,7 @@
                         <select id="ekleVarlikKodu" class="form-select dark-input" onkeypress="enterTetikle(event, 'btn-varlik-ekle')">
                             <optgroup label="💵 Nakit Hesap"><option value="TRY">Türk Lirası (TL)</option></optgroup>
                             <optgroup label="💱 Dövizler"><option value="USD">Dolar (USD)</option><option value="EUR">Euro (EUR)</option><option value="GBP">Sterlin (GBP)</option><option value="CHF">İsviçre Frangı (CHF)</option><option value="CAD">Kanada Doları (CAD)</option><option value="JPY">Japon Yeni (JPY)</option><option value="PLN">Polonya Zlotisi (PLN)</option><option value="RUB">Rus Rublesi (RUB)</option><option value="SAR">S. Arabistan Riyali (SAR)</option></optgroup>
-                            <optgroup label="🏆 Emtialar"><option value="GRAM">Gram Altın</option><option value="ONS">Ons Altın (XAU)</option><option value="ONS-GUMUS">Ons Gümüş (XAG)</option><option value="CEYREK">Çeyrek Altın</option><option value="YARIM">Yarım Altın</option><option value="TAM">Tam Altın</option><option value="BRENT">Brent Petrol</option><option value="BAKIR">Bakır</option></optgroup>
+                            <optgroup label="🏆 Emtialar"><option value="GRAM">Gram Altın</option><option value="ONS">Ons Altın (XAU)</option><option value="ONS-GUMUS">Ons Gümüş (XAG)</option><option value="CEYREK">Çeyrek Altın</option><option value="YARIM">Yarım Altın</option><option value="TAM">Tam Altın</option><option value="ATA">Ata Altın</option><option value="BRENT">Brent Petrol</option><option value="BAKIR">Bakır</option></optgroup>
                             <optgroup label="🪙 Kripto Paralar"><option value="BTC">Bitcoin (BTC)</option><option value="ETH">Ethereum (ETH)</option><option value="SOL">Solana (SOL)</option><option value="AVAX">Avalanche (AVAX)</option><option value="DOGE">Dogecoin (DOGE)</option><option value="XRP">Ripple (XRP)</option><option value="BNB">Binance Coin (BNB)</option><option value="SHIB">Shiba Inu (SHIB)</option></optgroup>
                         </select>
                     </div>
@@ -616,7 +617,7 @@
                         <select id="cikarVarlikKodu" class="form-select dark-input" onkeypress="enterTetikle(event, 'btn-varlik-cikar')">
                             <optgroup label="💵 Nakit Hesap"><option value="TRY">Türk Lirası (TL)</option></optgroup>
                             <optgroup label="💱 Dövizler"><option value="USD">Dolar (USD)</option><option value="EUR">Euro (EUR)</option><option value="GBP">Sterlin (GBP)</option><option value="CHF">İsviçre Frangı (CHF)</option><option value="CAD">Kanada Doları (CAD)</option><option value="JPY">Japon Yeni (JPY)</option><option value="PLN">Polonya Zlotisi (PLN)</option><option value="RUB">Rus Rublesi (RUB)</option><option value="SAR">S. Arabistan Riyali (SAR)</option></optgroup>
-                            <optgroup label="🏆 Emtialar"><option value="GRAM">Gram Altın</option><option value="ONS">Ons Altın (XAU)</option><option value="ONS-GUMUS">Ons Gümüş (XAG)</option><option value="CEYREK">Çeyrek Altın</option><option value="YARIM">Yarım Altın</option><option value="TAM">Tam Altın</option><option value="BRENT">Brent Petrol</option><option value="BAKIR">Bakır</option></optgroup>
+                            <optgroup label="🏆 Emtialar"><option value="GRAM">Gram Altın</option><option value="ONS">Ons Altın (XAU)</option><option value="ONS-GUMUS">Ons Gümüş (XAG)</option><option value="CEYREK">Çeyrek Altın</option><option value="YARIM">Yarım Altın</option><option value="TAM">Tam Altın</option><option value="ATA">Ata Altın</option><option value="BRENT">Brent Petrol</option><option value="BAKIR">Bakır</option></optgroup>
                             <optgroup label="🪙 Kripto Paralar"><option value="BTC">Bitcoin (BTC)</option><option value="ETH">Ethereum (ETH)</option><option value="SOL">Solana (SOL)</option><option value="AVAX">Avalanche (AVAX)</option><option value="DOGE">Dogecoin (DOGE)</option><option value="XRP">Ripple (XRP)</option><option value="BNB">Binance Coin (BNB)</option><option value="SHIB">Shiba Inu (SHIB)</option></optgroup>
                         </select>
                     </div>
@@ -721,6 +722,7 @@
             'GRAM': { isim: 'Gram Altın', renk: '#FFD700', birim: 'Gram' }, 'ONS': { isim: 'Ons Altın', renk: '#FFC107', birim: 'Ons' },
             'ONS-GUMUS': { isim: 'Gümüş', renk: '#C0C0C0', birim: 'Ons' }, 'CEYREK': { isim: 'Çeyrek Altın', renk: '#ffc107', birim: 'Adet' },
             'YARIM': { isim: 'Yarım Altın', renk: '#fd7e14', birim: 'Adet' }, 'TAM': { isim: 'Tam Altın', renk: '#e83e8c', birim: 'Adet' },
+            'ATA': { isim: 'Ata Altın', renk: '#e83e8c', birim: 'Adet' },
             'BRENT': { isim: 'Brent Petrol', renk: '#A9A9A9', birim: 'Varil' }, 'BAKIR': { isim: 'Bakır', renk: '#b87333', birim: 'Lbs' },
             'BTC': { isim: 'Bitcoin', renk: '#f7931a', birim: 'BTC' }, 'ETH': { isim: 'Ethereum', renk: '#627eea', birim: 'ETH' },
             'SOL': { isim: 'Solana', renk: '#14F195', birim: 'SOL' }, 'AVAX': { isim: 'Avalanche', renk: '#E84142', birim: 'AVAX' },
@@ -1105,7 +1107,7 @@
                     if(eleman && obj && obj.fiyat && obj.fiyat !== "---" && obj.fiyat !== "...") {
                         let yeniFiyatSayisi = metniSayiyaCevir(obj.fiyat);
                         let oncekiFiyatSayisi = oncekiFiyatlar[key]?.fSayisi;
-                        let p = DOLAR_BIRIMLERI.includes(key) ? "$" : "";
+                        let p = (DOLAR_BIRIMLERI.includes(key) && !String(obj.fiyat).includes('$')) ? "$" : "";
                         let s = DOLAR_BIRIMLERI.includes(key) ? "" : " ₺";
 
                         if(oncekiFiyatSayisi === undefined) {
@@ -1179,12 +1181,12 @@
                 if (pVeri) {
                     let okClass = pVeri.yuzde >= 0 ? 'bi-caret-up-fill text-success' : 'bi-caret-down-fill text-danger';
                     let rClass = pVeri.yuzde >= 0 ? 'text-success' : 'text-danger';
-                    let p = DOLAR_BIRIMLERI.includes(kod) ? "$" : "";
+                    let p = (DOLAR_BIRIMLERI.includes(kod) && !String(pVeri.fiyat).includes('$')) ? "$" : "";
                     html += `<div class="ticker-item"><span class="ticker-name">${pVeri.isim}</span><span class="ticker-price opacity-75">${p}${pVeri.fiyat}</span><i class="bi ${okClass}"></i> <span class="${rClass}">${pVeri.yuzde >= 0 ? '+':''}${pVeri.yuzde.toFixed(2)}%</span></div>`;
                 } else {
                     let eskiVeri = oncekiFiyatlar[kod];
                     if (eskiVeri && eskiVeri.fMetni) {
-                        let p = DOLAR_BIRIMLERI.includes(kod) ? "$" : "";
+                        let p = (DOLAR_BIRIMLERI.includes(kod) && !String(eskiVeri.fMetni).includes('$')) ? "$" : "";
                         let yuzde = eskiVeri.y || 0;
                         let okClass = yuzde >= 0 ? 'bi-caret-up-fill text-success' : 'bi-caret-down-fill text-danger';
                         let rClass = yuzde >= 0 ? 'text-success' : 'text-danger';
@@ -1203,7 +1205,7 @@
             let filt = sonHesaplananHareketler;
             if (aktifFiltre === 'crypto') filt = filt.filter(h => ['BTC','ETH','SOL','AVAX','DOGE','XRP'].includes(h.kod));
             else if (aktifFiltre === 'doviz') filt = filt.filter(h => ['USD','EUR','GBP','CHF','CAD','JPY','PLN','RUB','SAR'].includes(h.kod));
-            else if (aktifFiltre === 'emtia') filt = filt.filter(h => ['GRAM','ONS','ONS-GUMUS','CEYREK','YARIM','TAM'].includes(h.kod));
+            else if (aktifFiltre === 'emtia') filt = filt.filter(h => ['GRAM','ONS','ONS-GUMUS','CEYREK','YARIM','TAM','ATA'].includes(h.kod));
 
             moversHtmlUret('list-gainers', [...filt].sort((a,b)=>b.yuzde-a.yuzde).slice(0,4), 'up');
             moversHtmlUret('list-losers', [...filt].sort((a,b)=>a.yuzde-b.yuzde).slice(0,4), 'down');
@@ -1219,7 +1221,7 @@
                 varMi = true;
                 let rC = i.yuzde > 0 ? 'text-success' : 'text-danger';
                 let iC = i.yuzde > 0 ? 'bi-graph-up-arrow' : 'bi-graph-down-arrow';
-                let p = DOLAR_BIRIMLERI.includes(i.kod) ? "$" : "";
+                let p = (DOLAR_BIRIMLERI.includes(i.kod) && !String(i.fiyat).includes('$')) ? "$" : "";
                 let s = DOLAR_BIRIMLERI.includes(i.kod) ? "" : " ₺";
 
                 el.innerHTML += `<li class="list-group-item bg-transparent d-flex justify-content-between align-items-center border-secondary px-0 py-3 movers-list-item"><div class="d-flex align-items-center"><i class="bi ${iC} fs-3 ${rC} me-3"></i><div><h6 class="mb-0 text-bright" style="color:${i.renk}!important;">${i.isim}</h6><small class="text-muted fw-bold">${i.kod}</small></div></div><div class="text-end"><h6 class="mb-0 text-bright">${p}${i.fiyat}${s}</h6><small class="${rC} fw-bold">${i.yuzde>0?'+':''}${i.yuzde.toFixed(2)}%</small></div></li>`;
@@ -1231,7 +1233,10 @@
             Object.keys(oncekiFiyatlar).forEach(key => {
                 let e = document.getElementById('val-' + key);
                 let o = oncekiFiyatlar[key];
-                if (e && o && o.fMetni) { e.innerHTML = (DOLAR_BIRIMLERI.includes(key)?"$":"") + o.fMetni + (DOLAR_BIRIMLERI.includes(key)?"":" ₺"); }
+                if (e && o && o.fMetni) {
+                    let p = (DOLAR_BIRIMLERI.includes(key) && !String(o.fMetni).includes('$')) ? "$" : "";
+                    e.innerHTML = p + o.fMetni + (DOLAR_BIRIMLERI.includes(key)?"":" ₺");
+                }
             });
             if(document.getElementById('pills-portfoy-tab').classList.contains('active')) portfoyVerileriniCek();
             renderKendiTickerBandi();
@@ -1248,7 +1253,7 @@
 
                 let t = 'Kripto';
                 if(['USD','EUR','GBP','CHF','CAD','JPY','PLN','RUB','SAR'].includes(k)) t='Doviz';
-                else if(['GRAM','ONS','ONS-GUMUS','CEYREK','YARIM','TAM','BRENT','BAKIR'].includes(k)) t='Emtia';
+                else if(['GRAM','ONS','ONS-GUMUS','CEYREK','YARIM','TAM','ATA','BRENT','BAKIR'].includes(k)) t='Emtia';
                 else if(k==='TRY') t='Nakit';
 
                 const { error: pE } = await supabaseIstemci.from('portfoy').insert([{ kullanici_id: user.id, varlik_turu: t, varlik_kodu: k, miktar: m*c }]);
