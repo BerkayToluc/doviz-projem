@@ -382,7 +382,7 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span class="text-bright fs-5 d-flex align-items-center" style="color: #b87333 !important;">
                                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b87333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                                            Bakır (Copper)
+                                            Bakır (XCU)
                                         </span>
                                         <span class="price-tag fs-5" id="val-BAKIR">---</span>
                                     </div>
@@ -861,7 +861,7 @@
 
             let sym = [];
             if (tur === 'doviz') sym = [["Dolar/TL", "FX_IDC:USDTRY|1D"],["Euro/TL", "FX_IDC:EURTRY|1D"],["CHF/TL", "FX_IDC:CHFTRY|1D"],["GBP/TL", "FX_IDC:GBPTRY|1D"],["JPY/TL", "FX_IDC:JPYTRY|1D"],["CAD/TL", "FX_IDC:CADTRY|1D"]];
-            else if (tur === 'altin') sym = [["Gram Altın", "FX_IDC:XAUTRYG|1D"],["Ons Altın", "OANDA:XAUUSD|1D"],["Ons Gümüş", "OANDA:XAGUSD|1D"],["Brent Petrol", "TVC:UKOIL|1D"],["Bakır", "COMEX:HG1!|1D"]];
+            else if (tur === 'altin') sym = [["Gram Altın", "FX_IDC:XAUTRYG|1D"],["Ons Altın", "OANDA:XAUUSD|1D"],["Ons Gümüş", "OANDA:XAGUSD|1D"],["Brent Petrol", "TVC:UKOIL|1D"]];
             else if (tur === 'kripto') sym = [["Bitcoin", "BINANCE:BTCUSDT|1D"],["Ethereum", "BINANCE:ETHUSDT|1D"],["Solana", "BINANCE:SOLUSDT|1D"],["Avalanche", "BINANCE:AVAXUSDT|1D"],["Dogecoin", "BINANCE:DOGEUSDT|1D"],["Ripple", "BINANCE:XRPUSDT|1D"],["Binance Coin", "BINANCE:BNBUSDT|1D"],["Shiba Inu", "BINANCE:SHIBUSDT|1D"]];
 
             const s = document.createElement('script');
