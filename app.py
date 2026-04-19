@@ -8,7 +8,7 @@ from flask import Flask, render_template, jsonify, request
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# Loglama yapılandırması (hataları görmek için)
+# Loglama yapılandırması
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -25,9 +25,7 @@ VERI_YUKLENIYOR = "..."
 VERI_YOK = "---"
 DUSUK_FIYATLI_SEMBOLLER = ["DOGEUSDT", "XRPUSDT"]
 CACHE_SURESI = 8
-
-# TIMEOUT ARTTIRILDI!
-REQUEST_TIMEOUT = 15  # 5'ten 15'e çıkarıldı
+REQUEST_TIMEOUT = 15
 
 TARAYICI_BASLIGI = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -38,7 +36,7 @@ TARAYICI_BASLIGI = {
 
 RAM_ACILIS_FIYATLARI = {}
 ACILIS_YUKLENDI_MI = False
-VERI_HAZIR_MI = False  # Yeni flag
+VERI_HAZIR_MI = False
 
 sonVeriler = {
     "kurlar": {k: VERI_YUKLENIYOR for k in ["USD", "EUR", "GBP", "JPY", "PLN", "CHF", "CAD", "RUB", "SAR"]},
@@ -171,6 +169,73 @@ def tradingview_dev_motor(ham_kurlar_str, ham_altin_str):
         logger.error(f"TradingView CFD exception: {e}")
 
 
+def eksik_dovizleri_cek(ham_kurlar_str):
+    """
+    TradingView'den gelmeyen PLN, RUB, SAR için alternatif API kullan
+    ExchangeRate-API: Ücretsiz, API key gerektirmez
+    """
+    eksik_dovizler = []
+    if ham_kurlar_str.get("PLN") == VERI_YOK or "PLN" not in ham_kurlar_str:
+        eksik_dovizler.append("PLN")
+    if ham_kurlar_str.get("RUB") == VERI_YOK or "RUB" not in ham_kurlar_str:
+        eksik_dovizler.append("RUB")
+    if ham_kurlar_str.get("SAR") == VERI_YOK or "SAR" not in ham_kurlar_str:
+        eksik_dovizler.append("SAR")
+
+    if not eksik_dovizler:
+        logger.info("Tüm dövizler TradingView'den geldi, alternatif API gereksiz")
+        return
+
+    try:
+        logger.info(f"Eksik dövizler için ExchangeRate-API çağrılıyor: {eksik_dovizler}")
+
+        # USD bazlı kurları al
+        url = "https://api.exchangerate-api.com/v4/latest/USD"
+        r = requests.get(url, timeout=10)
+
+        if r.status_code == 200:
+            data = r.json()
+            rates = data.get("rates", {})
+
+            # USD/TRY kurunu alalım (USD bazlı TRY)
+            usd_try = rates.get("TRY")
+
+            if usd_try and usd_try > 0:
+                logger.info(f"ExchangeRate-API USD/TRY: {usd_try}")
+
+                # PLN/TRY hesapla
+                if "PLN" in eksik_dovizler:
+                    pln_usd = rates.get("PLN")  # 1 USD = X PLN
+                    if pln_usd and pln_usd > 0:
+                        # 1 PLN = (USD/TRY) / (PLN/USD) TRY
+                        pln_try = usd_try / pln_usd
+                        ham_kurlar_str["PLN"] = "{:.4f}".format(pln_try).replace('.', ',')
+                        logger.info(f"PLN/TRY hesaplandı: {pln_try:.4f}")
+
+                # RUB/TRY hesapla
+                if "RUB" in eksik_dovizler:
+                    rub_usd = rates.get("RUB")  # 1 USD = X RUB
+                    if rub_usd and rub_usd > 0:
+                        rub_try = usd_try / rub_usd
+                        ham_kurlar_str["RUB"] = "{:.4f}".format(rub_try).replace('.', ',')
+                        logger.info(f"RUB/TRY hesaplandı: {rub_try:.4f}")
+
+                # SAR/TRY hesapla
+                if "SAR" in eksik_dovizler:
+                    sar_usd = rates.get("SAR")  # 1 USD = X SAR
+                    if sar_usd and sar_usd > 0:
+                        sar_try = usd_try / sar_usd
+                        ham_kurlar_str["SAR"] = "{:.4f}".format(sar_try).replace('.', ',')
+                        logger.info(f"SAR/TRY hesaplandı: {sar_try:.4f}")
+            else:
+                logger.error("ExchangeRate-API'den USD/TRY alınamadı")
+        else:
+            logger.error(f"ExchangeRate-API hata: {r.status_code}")
+
+    except Exception as e:
+        logger.error(f"ExchangeRate-API exception: {e}")
+
+
 def brent_petrol_cek(ham_altin_str):
     if ham_altin_str.get("BRENT", VERI_YOK) != VERI_YOK:
         return
@@ -239,8 +304,16 @@ def verileriCek_gercek():
                      "ONS": VERI_YOK, "ONS-GUMUS": VERI_YOK, "BRENT": VERI_YOK, "BAKIR": VERI_YOK}
     ham_kripto_str = {}
 
+    # 1. TradingView'den döviz ve emtia
     tradingview_dev_motor(ham_kurlar_str, ham_altin_str)
+
+    # 2. Eksik dövizler için alternatif API (PLN, RUB, SAR)
+    eksik_dovizleri_cek(ham_kurlar_str)
+
+    # 3. Brent petrol
     brent_petrol_cek(ham_altin_str)
+
+    # 4. Binance kripto
     binance_cek(ham_kripto_str)
 
     # Matematik
