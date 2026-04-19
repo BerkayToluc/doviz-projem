@@ -2,8 +2,7 @@ import os
 import time
 import requests
 import threading
-import concurrent.futures
-from bs4 import BeautifulSoup
+import re
 from flask import Flask, render_template, jsonify, request
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -16,7 +15,6 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- SİSTEM AYARLARI ---
 VARSAYILAN_PORT = 5000
 VERI_YUKLENIYOR = "..."
 VERI_YOK = "---"
@@ -25,13 +23,8 @@ CACHE_SURESI = 8
 
 TARAYICI_BASLIGI = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Accept': '*/*'
+    'Accept': 'application/json'
 }
-
-# --- YAHOO DEV MOTORU HAFIZASI ---
-son_fx_zamani = 0
-fx_hafizasi = {}
-emtia_hafizasi = {"BRENT": VERI_YOK, "BAKIR": VERI_YOK}
 
 RAM_ACILIS_FIYATLARI = {}
 ACILIS_YUKLENDI_MI = False
@@ -39,7 +32,7 @@ ACILIS_YUKLENDI_MI = False
 sonVeriler = {
     "kurlar": {k: VERI_YUKLENIYOR for k in ["USD", "EUR", "GBP", "JPY", "PLN", "CHF", "CAD", "RUB", "SAR"]},
     "altin": {k: VERI_YUKLENIYOR for k in
-              ["GRAM", "CEYREK", "YARIM", "TAM", "ATA",  "ONS", "ONS-GUMUS", "BRENT", "BAKIR"]},
+              ["GRAM", "CEYREK", "YARIM", "TAM", "ATA", "ONS", "ONS-GUMUS", "BRENT", "BAKIR"]},
     "kripto": {k: VERI_YUKLENIYOR for k in ["BTC", "ETH", "SOL", "AVAX", "DOGE", "XRP"]}
 }
 
@@ -72,90 +65,121 @@ def acilis_fiyatlarini_getir():
             RAM_ACILIS_FIYATLARI = {row["varlik_kodu"]: row["fiyat"] for row in acilislar_db}
             ACILIS_YUKLENDI_MI = True
         except Exception as e:
-            print("Supabase okuma hatası:", e)
+            pass
     return RAM_ACILIS_FIYATLARI
 
 
 # ==============================================================
-# 1. KAYNAK: YAHOO PARALEL MOTOR (Sadece Döviz, Brent, Bakır)
+# 1. KAYNAK: TRADINGVIEW ÇİFT MOTOR (Dövizler ve Emtialar - SANİYELİK)
+# ER-API TAMAMEN SİLİNDİ!
 # ==============================================================
-def yahoo_dev_motor():
-    global son_fx_zamani, fx_hafizasi, emtia_hafizasi
-    su_an = time.time()
-
-    if su_an - son_fx_zamani < 15 and fx_hafizasi:
-        return fx_hafizasi, emtia_hafizasi
-
-    yeni_kurlar = {}
-    yeni_emtia = {"BRENT": VERI_YOK, "BAKIR": VERI_YOK}
-
-    # Gümüş çıkarıldı, sadece döviz ve petrol/bakır kaldı
-    HIZLI_SEMBOLLER = {
-        "TRY=X": "USD", "EURTRY=X": "EUR", "GBPTRY=X": "GBP", "CHFTRY=X": "CHF",
-        "CADTRY=X": "CAD", "JPYTRY=X": "JPY", "PLNTRY=X": "PLN", "RUBTRY=X": "RUB", "SARTRY=X": "SAR",
-        "BZ=F": "BRENT", "HG=F": "BAKIR"
-    }
-
-    def _tekil_cek(parca):
-        sembol, kod = parca
-        try:
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sembol}"
-            r = requests.get(url, headers=TARAYICI_BASLIGI, timeout=5)
-            if r.status_code == 200:
-                fiyat = r.json()["chart"]["result"][0]["meta"]["regularMarketPrice"]
-                if kod in ["BRENT", "BAKIR"]:
-                    if kod == "BRENT":
-                        yeni_emtia[kod] = "{:.2f}".format(fiyat).replace('.', ',')
-                    elif kod == "BAKIR":
-                        yeni_emtia[kod] = "{:.4f}".format(fiyat).replace('.', ',')
-                else:
-                    yeni_kurlar[kod] = fiyat
-        except:
-            pass
-
-    with concurrent.futures.ThreadPoolExecutor() as ex:
-        ex.map(_tekil_cek, HIZLI_SEMBOLLER.items())
-
-    if yeni_kurlar:
-        fx_hafizasi = yeni_kurlar
-        emtia_hafizasi = yeni_emtia
-        son_fx_zamani = su_an
-        print("✅ Yahoo Paralel Motor Çalıştı!")
-
-    return fx_hafizasi, emtia_hafizasi
-
-
-# ==============================================================
-# 2. KAYNAK: DOVİZ.COM MOTORU (Gram Altın, Ons, Ons Gümüş)
-# ==============================================================
-def doviz_com_cek(ham_altin_str):
-    def _cek(url, key):
-        try:
-            r = requests.get(url, headers=TARAYICI_BASLIGI, timeout=5)
-            if r.status_code == 200:
-                soup = BeautifulSoup(r.text, 'html.parser')
-                val = soup.find(attrs={"data-socket-key": key, "data-socket-attr": "s"})
-                if val: return val.text.strip()
-        except:
-            pass
-        return None
-
-    # Aynı anda 3 sayfayı hızla çeker
-    with concurrent.futures.ThreadPoolExecutor() as ex:
-        gelecekler = {
-            ex.submit(_cek, "https://altin.doviz.com/gram-altin", "gram-altin"): "GRAM",
-            ex.submit(_cek, "https://altin.doviz.com/ons", "ons"): "ONS",
-            ex.submit(_cek, "https://altin.doviz.com/ons-gumus", "ons-gumus"): "ONS-GUMUS"
+def tradingview_dev_motor(ham_kurlar_str, ham_altin_str):
+    # A) FOREX ODASI (Döviz Kurları - Artık 8 Saniyede Bir Canlı!)
+    try:
+        url_fx = "https://scanner.tradingview.com/forex/scan"
+        payload_fx = {
+            "symbols": {
+                "tickers": [
+                    "FX_IDC:USDTRY", "FX_IDC:EURTRY", "FX_IDC:GBPTRY", "FX_IDC:CHFTRY",
+                    "FX_IDC:CADTRY", "FX_IDC:JPYTRY", "FX_IDC:PLNTRY", "FX_IDC:RUBTRY", "FX_IDC:SARTRY"
+                ]
+            },
+            "columns": ["close"]
         }
-        for future in concurrent.futures.as_completed(gelecekler):
-            kod = gelecekler[future]
-            sonuc = future.result()
-            if sonuc:
-                ham_altin_str[kod] = sonuc
+        r_fx = requests.post(url_fx, json=payload_fx, headers=TARAYICI_BASLIGI, timeout=5)
+        if r_fx.status_code == 200:
+            for item in r_fx.json().get("data", []):
+                t = item.get("s", "")
+                f = float(item.get("d", [0])[0])
+                if f <= 0: continue
+
+                if "USDTRY" in t:
+                    ham_kurlar_str["USD"] = "{:.4f}".format(f).replace('.', ',')
+                elif "EURTRY" in t:
+                    ham_kurlar_str["EUR"] = "{:.4f}".format(f).replace('.', ',')
+                elif "GBPTRY" in t:
+                    ham_kurlar_str["GBP"] = "{:.4f}".format(f).replace('.', ',')
+                elif "CHFTRY" in t:
+                    ham_kurlar_str["CHF"] = "{:.4f}".format(f).replace('.', ',')
+                elif "CADTRY" in t:
+                    ham_kurlar_str["CAD"] = "{:.4f}".format(f).replace('.', ',')
+                elif "JPYTRY" in t:
+                    ham_kurlar_str["JPY"] = "{:.4f}".format(f).replace('.', ',')
+                elif "PLNTRY" in t:
+                    ham_kurlar_str["PLN"] = "{:.4f}".format(f).replace('.', ',')
+                elif "RUBTRY" in t:
+                    ham_kurlar_str["RUB"] = "{:.4f}".format(f).replace('.', ',')
+                elif "SARTRY" in t:
+                    ham_kurlar_str["SAR"] = "{:.4f}".format(f).replace('.', ',')
+    except:
+        pass
+
+    # B) CFD ODASI (Altın, Gümüş, Bakır)
+    try:
+        url_cfd = "https://scanner.tradingview.com/cfd/scan"
+        payload_cfd = {
+            "symbols": {
+                "tickers": [
+                    "OANDA:XAUUSD", "FX_IDC:XAUUSD", "TVC:GOLD",
+                    "OANDA:XAGUSD", "FX_IDC:XAGUSD", "TVC:SILVER",
+                    "TVC:COPPER", "OANDA:XCUUSD", "PEPPERSTONE:XCUUSD"
+                ]
+            },
+            "columns": ["close"]
+        }
+        r_cfd = requests.post(url_cfd, json=payload_cfd, headers=TARAYICI_BASLIGI, timeout=5)
+        if r_cfd.status_code == 200:
+            bulunanlar = {"ONS": False, "GUMUS": False, "BAKIR": False}
+            for item in r_cfd.json().get("data", []):
+                t = item.get("s", "")
+                f = float(item.get("d", [0])[0])
+                if f <= 0: continue
+
+                if ("XAUUSD" in t or "GOLD" in t) and not bulunanlar["ONS"]:
+                    ham_altin_str["ONS"] = "{:.2f}".format(f).replace('.', ',')
+                    bulunanlar["ONS"] = True
+                elif ("XAGUSD" in t or "SILVER" in t) and not bulunanlar["GUMUS"]:
+                    ham_altin_str["ONS-GUMUS"] = fiyatiFormatla(f)
+                    bulunanlar["GUMUS"] = True
+                elif ("COPPER" in t or "XCUUSD" in t) and not bulunanlar["BAKIR"]:
+                    ham_altin_str["BAKIR"] = "{:.4f}".format(f).replace('.', ',')
+                    bulunanlar["BAKIR"] = True
+    except:
+        pass
 
 
 # ==============================================================
-# 3. KAYNAK: BINANCE (Sadece Kriptolar)
+# 2. KAYNAK: BRENT MOTORU (Google Finance & CNBC)
+# ==============================================================
+def brent_petrol_cek(ham_altin_str):
+    if ham_altin_str.get("BRENT", VERI_YOK) != VERI_YOK: return
+
+    try:
+        r = requests.get("https://www.google.com/finance/quote/BZW00:NYMEX", headers=TARAYICI_BASLIGI, timeout=4)
+        if r.status_code == 200:
+            match = re.search(r'class="YMlKec fxKbKc">\$?([0-9,\.]+)', r.text)
+            if match:
+                val = float(match.group(1).replace(',', ''))
+                if val > 0:
+                    ham_altin_str["BRENT"] = "{:.2f}".format(val).replace('.', ',')
+                    return
+    except:
+        pass
+
+    try:
+        r = requests.get("https://www.cnbc.com/quotes/@LCO.1", headers=TARAYICI_BASLIGI, timeout=4)
+        if r.status_code == 200:
+            match = re.search(r'"last":"([0-9\.]+)"', r.text)
+            if match:
+                val = float(match.group(1))
+                if val > 0:
+                    ham_altin_str["BRENT"] = "{:.2f}".format(val).replace('.', ',')
+    except:
+        pass
+
+
+# ==============================================================
+# 3. KAYNAK: BINANCE (Kriptolar)
 # ==============================================================
 def binance_cek(ham_kripto):
     try:
@@ -177,31 +201,29 @@ def binance_cek(ham_kripto):
 def verileriCek_gercek():
     global sonVeriler
     ham_kurlar_str = {}
+    ham_altin_str = {"GRAM": VERI_YOK, "CEYREK": VERI_YOK, "YARIM": VERI_YOK, "TAM": VERI_YOK, "ATA": VERI_YOK,
+                     "ONS": VERI_YOK, "ONS-GUMUS": VERI_YOK, "BRENT": VERI_YOK, "BAKIR": VERI_YOK}
     ham_kripto_str = {}
 
-    # 1. Kaynakları Çek
-    guncel_fx, guncel_emtia = yahoo_dev_motor()
+    tradingview_dev_motor(ham_kurlar_str, ham_altin_str)
+    brent_petrol_cek(ham_altin_str)
     binance_cek(ham_kripto_str)
 
-    ham_altin_str = guncel_emtia.copy() if guncel_emtia else {"BRENT": VERI_YOK, "BAKIR": VERI_YOK}
+    # SAF TRADINGVIEW MATEMATİĞİ (Sıfır Makas, Sadece Spot)
+    ons_str = ham_altin_str.get("ONS", VERI_YOK)
+    usd_str = ham_kurlar_str.get("USD", VERI_YOK)
 
-    for kod, fiyat in guncel_fx.items():
-        if fiyat > 0:
-            ham_kurlar_str[kod] = "{:.4f}".format(fiyat).replace('.', ',')
+    if ons_str != VERI_YOK and usd_str != VERI_YOK:
+        ons_val = metniSayiyaCevir(ons_str)
+        usd_val = metniSayiyaCevir(usd_str)
 
-    # 2. Doviz.com Verilerini Çek
-    doviz_com_cek(ham_altin_str)
-
-    # 3. Gerçek Gram Altın Üzerinden Diğer Altınları Hesapla
-    gram_str = ham_altin_str.get("GRAM", VERI_YOK)
-    if gram_str != VERI_YOK:
-        gram_val = metniSayiyaCevir(gram_str)
-        if gram_val > 0:
-            ham_altin_str["CEYREK"] = fiyatiFormatla(gram_val * 1.64)
-            ham_altin_str["YARIM"] = fiyatiFormatla(gram_val * 3.28)
-            ham_altin_str["TAM"] = fiyatiFormatla(gram_val * 6.56)
-            ham_altin_str["ATA"] = fiyatiFormatla(gram_val * 6.78)
-
+        if ons_val > 0 and usd_val > 0:
+            gram = (ons_val * usd_val) / 31.1034768
+            ham_altin_str["GRAM"] = fiyatiFormatla(gram)
+            ham_altin_str["CEYREK"] = fiyatiFormatla(gram * 1.64)
+            ham_altin_str["YARIM"] = fiyatiFormatla(gram * 3.28)
+            ham_altin_str["TAM"] = fiyatiFormatla(gram * 6.56)
+            ham_altin_str["ATA"] = fiyatiFormatla(gram * 6.78)
 
     acilis_sozlugu = acilis_fiyatlarini_getir()
 
@@ -252,10 +274,8 @@ def kaydetGecmis():
 def geceTetikleyici():
     global RAM_ACILIS_FIYATLARI, ACILIS_YUKLENDI_MI
     try:
-        global son_fx_zamani
-        son_fx_zamani = 0
         verileriCek_gercek()
-        tum_veriler = {**sonVeriler["kurlar"], **sonVeriler["altin"], **sonVeriler["kripto"]}
+        tum_veriler = {**sonVeriler.get("kurlar", {}), **sonVeriler.get("altin", {}), **sonVeriler.get("kripto", {})}
         kayit_listesi, yeni_ram_verisi = [], {}
 
         for kod, data in tum_veriler.items():
