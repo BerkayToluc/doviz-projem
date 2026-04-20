@@ -2,7 +2,20 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>MBT Finans Terminali</title>
+    <title>MBT Finans Terminali | Canlı Döviz, Altın ve Kripto Takibi</title>
+
+    <meta name="description" content="MBT Finans ile canlı döviz kurları, altın fiyatları ve kripto paraları saniyelik takip edin. Ücretsiz portföy yönetimi ve profesyonel piyasa analiz terminali.">
+    <meta name="keywords" content="canlı döviz, anlık altın fiyatları, kripto para takibi, brent petrol fiyatı, portföy yönetimi, ekonomi terminali, dolar tl canlı, mbt finans">
+    <meta name="author" content="MBT Finans">
+    <meta name="robots" content="index, follow">
+    <meta name="google-site-verification" content="f2pEkGgFh3mRsgcsx4P6BJtfLrh245snD1E06C5DtVI" />
+
+    <meta property="og:title" content="MBT Finans Terminali | Canlı Piyasa Verileri">
+    <meta property="og:description" content="Piyasaları saniyelik, ücretsiz ve profesyonelce takip edin. Kendi portföyünüzü oluşturun.">
+    <meta property="og:image" content="{{ url_for('static', filename='icon2.png') }}">
+    <meta property="og:url" content="https://berkay-exchange-app.onrender.com/">
+    <meta property="og:type" content="website">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="{{ url_for('static', filename='icon2.png') }}" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -98,6 +111,7 @@
         body.light-mode .form-label.text-light { color: #222222 !important; font-weight: 600; }
 
         /* KİLİT EKRANLARI AÇIK MOD UYUMU */
+        .paywall-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 40px; z-index: 10; border-radius: 15px; transition: opacity 0.3s ease; }
         body.light-mode .paywall-overlay { background: rgba(255,255,255,0.85); }
         body.light-mode .paywall-title { color: #111111 !important; text-shadow: none; }
         body.light-mode .paywall-desc { color: #444444 !important; font-weight: 500; }
@@ -177,7 +191,7 @@
                         <div class="dashboard-hero text-center text-lg-start d-flex flex-column flex-lg-row align-items-center justify-content-between">
                             <div>
                                 <h1 class="text-bright fw-bold mb-3" style="font-size: 2.5rem;">Hoş Geldiniz, <span id="hero-kullanici-adi" class="text-warning">Yatırımcı</span></h1>
-                                <p class="fs-5 opacity-75 mb-4">Tüm yatırımlarınız, piyasa hareketleri ve canlı analizler tek bir ekranda.</p>
+                                <p class="fs-5 opacity-75 mb-4">Canlı piyasa verileri ve profesyonel finansal araçlar MBT Terminali'nde.</p>
                                 <div class="d-flex gap-3 justify-content-center justify-content-lg-start">
                                     <button class="btn btn-warning fw-bold px-4 rounded-pill" onclick="document.getElementById('pills-portfoy-tab').click()"><i class="bi bi-briefcase-fill me-2"></i> Portföyüne Git</button>
                                     <button class="btn btn-outline-info fw-bold px-4 rounded-pill" onclick="document.getElementById('pills-doviz-tab').click()"><i class="bi bi-arrow-left-right me-2"></i> Hızlı Çevirici</button>
@@ -227,11 +241,11 @@
                                         <div class="btn-group" role="group">
                                             <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreAll" autocomplete="off" checked onclick="filtreleHareketler('all')">
                                             <label class="btn btn-outline-info btn-sm fw-bold" for="btnFiltreAll">Tümü</label>
-                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreDoviz" autocomplete="off" onclick="filtreleHareketler('doviz')">
+                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreDoviz" autocomplete="off" onclick="filterleHareketler('doviz')">
                                             <label class="btn btn-outline-success btn-sm fw-bold" for="btnFiltreDoviz">Döviz</label>
-                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreEmtia" autocomplete="off" onclick="filtreleHareketler('emtia')">
+                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreEmtia" autocomplete="off" onclick="filterleHareketler('emtia')">
                                             <label class="btn btn-outline-warning btn-sm fw-bold" for="btnFiltreEmtia">Emtia</label>
-                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreCrypto" autocomplete="off" onclick="filtreleHareketler('crypto')">
+                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreCrypto" autocomplete="off" onclick="filterleHareketler('crypto')">
                                             <label class="btn btn-outline-primary btn-sm fw-bold" for="btnFiltreCrypto">Kripto</label>
                                         </div>
                                     </div>
