@@ -8,7 +8,6 @@ from flask import Flask, render_template, jsonify, request
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# Loglama yapılandırması (hataları görmek için)
 # Loglama yapılandırması
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,9 +25,6 @@ VERI_YUKLENIYOR = "..."
 VERI_YOK = "---"
 DUSUK_FIYATLI_SEMBOLLER = ["DOGEUSDT", "XRPUSDT"]
 CACHE_SURESI = 8
-
-# TIMEOUT ARTTIRILDI!
-REQUEST_TIMEOUT = 15  # 5'ten 15'e çıkarıldı
 REQUEST_TIMEOUT = 15
 
 TARAYICI_BASLIGI = {
@@ -40,7 +36,6 @@ TARAYICI_BASLIGI = {
 
 RAM_ACILIS_FIYATLARI = {}
 ACILIS_YUKLENDI_MI = False
-VERI_HAZIR_MI = False  # Yeni flag
 VERI_HAZIR_MI = False
 
 sonVeriler = {
