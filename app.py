@@ -4,7 +4,7 @@ import requests
 import threading
 import re
 import logging
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from flask import Flask, render_template, jsonify, request
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -26,9 +26,9 @@ VERI_YUKLENIYOR = "..."
 VERI_YOK = "---"
 DUSUK_FIYATLI_SEMBOLLER = ["DOGEUSDT", "XRPUSDT"]
 
-# İdeal Hızımız
+# CLAUDE'UN UYARISI ÜZERİNE GÜNCELLENEN SÜRELER ⏱️
 CACHE_SURESI = 8
-REQUEST_TIMEOUT = 10
+REQUEST_TIMEOUT = 18  # Trunçgil gecikirse diye 10'dan 18'e çıkarıldı!
 
 TARAYICI_BASLIGI = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
@@ -69,7 +69,6 @@ def acilis_fiyatlarini_getir():
     global RAM_ACILIS_FIYATLARI, ACILIS_YUKLENDI_MI
     if not ACILIS_YUKLENDI_MI:
         try:
-            logger.info("Açılış fiyatları çekiliyor...")
             acilislar_db = supabase.table("gunluk_acilis").select("*").execute().data
             RAM_ACILIS_FIYATLARI = {row["varlik_kodu"]: row["fiyat"] for row in acilislar_db}
             ACILIS_YUKLENDI_MI = True
@@ -79,27 +78,21 @@ def acilis_fiyatlarini_getir():
 
 
 # ==============================================================
-# 🚀 1. MOTOR: TRUNCGIL FINANS API (Bulut Sunucu Engellemez)
-# ==============================================================
-# ==============================================================
-# 🚀 YENİ MOTOR: TRUNCGIL FINANS API (BULUT SUNUCULARI ENGELLEMEZ)
+# 🚀 1. MOTOR: TRUNCGIL FINANS API
 # ==============================================================
 def truncgil_piyasa_cek(ham_kurlar_str, ham_altin_str):
     try:
-        logger.info("Truncgil API'den veriler çekiliyor (Ban yemez)...")
         url = "https://finans.truncgil.com/today.json"
         r = requests.get(url, headers=TARAYICI_BASLIGI, timeout=REQUEST_TIMEOUT)
 
         if r.status_code == 200:
             data = r.json()
 
-            # 1. Dövizler
             for kod in ["USD", "EUR", "GBP", "CHF", "CAD", "JPY", "RUB", "SAR"]:
                 if kod in data:
                     satis = data[kod].get("Satış") or data[kod].get("satis")
                     if satis: ham_kurlar_str[kod] = satis
 
-            # 2. Altınlar (Gümüş Gram TL olduğu için listeden çıkarıldı, Dolar ONS olarak CNBC'den çekilecek)
             altinlar = {
                 "GRAM": "gram-altin",
                 "CEYREK": "ceyrek-altin",
@@ -113,15 +106,15 @@ def truncgil_piyasa_cek(ham_kurlar_str, ham_altin_str):
                     satis = data[isim].get("Satış") or data[isim].get("satis")
                     if satis: ham_altin_str[kod] = satis
 
-            logger.info("Truncgil verileri başarıyla alındı!")
+            logger.info("✅ Truncgil verileri başarıyla çekildi.")
         else:
-            logger.error(f"Truncgil Hata: HTTP {r.status_code}")
+            logger.error(f"❌ Truncgil Hata: HTTP {r.status_code}")
     except Exception as e:
-        logger.error(f"Truncgil Coktu: {e}")
+        logger.error(f"❌ Truncgil Coktu: {e}")
 
 
 # ==============================================================
-# 🛠 2. MOTOR: EKSİK DÖVİZ TAMAMLAYICI (Ücretsiz API)
+# 🛠 2. MOTOR: EKSİK DÖVİZ TAMAMLAYICI
 # ==============================================================
 def eksik_dovizleri_cek(ham_kurlar_str):
     eksik_dovizler = [d for d in ["PLN", "RUB", "SAR", "CAD", "JPY"] if
@@ -130,7 +123,7 @@ def eksik_dovizleri_cek(ham_kurlar_str):
 
     try:
         url = "https://api.exchangerate-api.com/v4/latest/USD"
-        r = requests.get(url, timeout=10)
+        r = requests.get(url, timeout=REQUEST_TIMEOUT)
         if r.status_code == 200:
             rates = r.json().get("rates", {})
             usd_try = rates.get("TRY")
@@ -141,14 +134,13 @@ def eksik_dovizleri_cek(ham_kurlar_str):
                         val_try = usd_try / rate_usd
                         ham_kurlar_str[d] = "{:.4f}".format(val_try).replace('.', ',')
     except Exception as e:
-        logger.error(f"ExchangeRate-API exception: {e}")
+        logger.error(f"❌ ExchangeRate-API Hatası: {e}")
 
 
 # ==============================================================
-# 🛢 3. MOTOR: CNBC EMTİA (Brent ve Bakır İçin)
+# 🛢 3. MOTOR: CNBC EMTİA
 # ==============================================================
 def emtia_cnbc_cek(ham_altin_str):
-    # Brent Petrol
     if ham_altin_str.get("BRENT", VERI_YOK) == VERI_YOK:
         try:
             r = requests.get("https://www.cnbc.com/quotes/@LCO.1", headers=TARAYICI_BASLIGI, timeout=REQUEST_TIMEOUT)
@@ -158,7 +150,6 @@ def emtia_cnbc_cek(ham_altin_str):
         except:
             pass
 
-    # Bakır
     if ham_altin_str.get("BAKIR", VERI_YOK) == VERI_YOK:
         try:
             r = requests.get("https://www.cnbc.com/quotes/@HG.1", headers=TARAYICI_BASLIGI, timeout=REQUEST_TIMEOUT)
@@ -168,7 +159,6 @@ def emtia_cnbc_cek(ham_altin_str):
         except:
             pass
 
-    # Ons Gümüş (Gerçek USD Fiyatı - $76 civarı)
     if ham_altin_str.get("ONS-GUMUS", VERI_YOK) == VERI_YOK:
         try:
             r = requests.get("https://www.cnbc.com/quotes/@SI.1", headers=TARAYICI_BASLIGI, timeout=REQUEST_TIMEOUT)
@@ -180,7 +170,7 @@ def emtia_cnbc_cek(ham_altin_str):
 
 
 # ==============================================================
-# 🪙 4. MOTOR: BINANCE (Kriptolar İçin - Saniyelik)
+# 🪙 4. MOTOR: BINANCE
 # ==============================================================
 def binance_cek(ham_kripto):
     try:
@@ -193,7 +183,7 @@ def binance_cek(ham_kripto):
                 kod = sym.replace("USDT", "")
                 ham_kripto[kod] = fiyatiFormatla(fiyat, sym)
     except Exception as e:
-        logger.error(f"Binance exception: {e}")
+        logger.error(f"❌ Binance Hatası: {e}")
 
 
 # ==============================================================
@@ -207,26 +197,28 @@ def verileriCek_gercek():
                      "ONS": VERI_YOK, "ONS-GUMUS": VERI_YOK, "BRENT": VERI_YOK, "BAKIR": VERI_YOK}
     ham_kripto_str = {}
 
-    # Turbo Mod: Truncgil ve Binance'i aynı anda başlat
     with ThreadPoolExecutor(max_workers=2) as executor:
         fut_trunc = executor.submit(truncgil_piyasa_cek, ham_kurlar_str, ham_altin_str)
         fut_binance = executor.submit(binance_cek, ham_kripto_str)
 
+        # Hata yutmayı engelledik, Timeout sınırını 20 saniye yaptık!
         try:
-            fut_trunc.result(timeout=REQUEST_TIMEOUT + 1)
-        except:
-            pass
+            fut_trunc.result(timeout=20)
+        except TimeoutError:
+            logger.error("🚨 Truncgil API zaman aşımına uğradı (Timeout)!")
+        except Exception as e:
+            logger.error(f"🚨 Truncgil Thread Hatası: {e}")
 
         try:
-            fut_binance.result(timeout=REQUEST_TIMEOUT + 1)
-        except:
-            pass
+            fut_binance.result(timeout=20)
+        except TimeoutError:
+            logger.error("🚨 Binance API zaman aşımına uğradı (Timeout)!")
+        except Exception as e:
+            logger.error(f"🚨 Binance Thread Hatası: {e}")
 
-    # Eksikler için yedek motorları çalıştır
     eksik_dovizleri_cek(ham_kurlar_str)
     emtia_cnbc_cek(ham_altin_str)
 
-    # Matematik Sağlaması (Eğer Trunçgil'de anlık kopma olursa matematikle hesapla)
     ons_str = ham_altin_str.get("ONS", VERI_YOK)
     usd_str = ham_kurlar_str.get("USD", VERI_YOK)
 
@@ -244,12 +236,14 @@ def verileriCek_gercek():
 
     acilis_sozlugu = acilis_fiyatlarini_getir()
 
-    def zenginlestir(ham_veri):
+    def zenginlestir(ham_veri, eski_zengin_veri):
         zengin_veri = {}
         for kod, fiyat_str in ham_veri.items():
             if fiyat_str in [VERI_YUKLENIYOR, VERI_YOK]:
-                zengin_veri[kod] = {"fiyat": fiyat_str, "yuzde": 0.0}
+                # Eğer API o an boş döndüyse, ESKİ VERİYİ KORU! (Hayatta kalma mekanizması)
+                zengin_veri[kod] = eski_zengin_veri.get(kod, {"fiyat": fiyat_str, "yuzde": 0.0})
                 continue
+
             guncel_deger = metniSayiyaCevir(fiyat_str)
             acilis_degeri = acilis_sozlugu.get(kod)
             yuzde = 0.0
@@ -258,9 +252,9 @@ def verileriCek_gercek():
             zengin_veri[kod] = {"fiyat": fiyat_str, "yuzde": yuzde}
         return zengin_veri
 
-    if ham_kurlar_str: sonVeriler["kurlar"] = zenginlestir(ham_kurlar_str)
-    if ham_altin_str: sonVeriler["altin"] = zenginlestir(ham_altin_str)
-    if ham_kripto_str: sonVeriler["kripto"] = zenginlestir(ham_kripto_str)
+    if ham_kurlar_str: sonVeriler["kurlar"] = zenginlestir(ham_kurlar_str, sonVeriler["kurlar"])
+    if ham_altin_str: sonVeriler["altin"] = zenginlestir(ham_altin_str, sonVeriler["altin"])
+    if ham_kripto_str: sonVeriler["kripto"] = zenginlestir(ham_kripto_str, sonVeriler["kripto"])
 
 
 def arkaplan_dongusu():
@@ -278,11 +272,9 @@ try:
 except Exception as e:
     logger.error(f"İlk veri çekimi hatası: {e}")
 
-# Arka plan motorunu başlat
 threading.Thread(target=arkaplan_dongusu, daemon=True).start()
 
 
-# 🥷 ÖNBELLEK KATİLİ (Tarayıcıyı kandırmak için zorunludur)
 @app.after_request
 def add_header(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
