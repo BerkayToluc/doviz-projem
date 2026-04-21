@@ -241,11 +241,11 @@
                                         <div class="btn-group" role="group">
                                             <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreAll" autocomplete="off" checked onclick="filtreleHareketler('all')">
                                             <label class="btn btn-outline-info btn-sm fw-bold" for="btnFiltreAll">Tümü</label>
-                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreDoviz" autocomplete="off" onclick="filterleHareketler('doviz')">
+                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreDoviz" autocomplete="off" onclick="filtreleHareketler('doviz')">
                                             <label class="btn btn-outline-success btn-sm fw-bold" for="btnFiltreDoviz">Döviz</label>
-                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreEmtia" autocomplete="off" onclick="filterleHareketler('emtia')">
+                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreEmtia" autocomplete="off" onclick="filtreleHareketler('emtia')">
                                             <label class="btn btn-outline-warning btn-sm fw-bold" for="btnFiltreEmtia">Emtia</label>
-                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreCrypto" autocomplete="off" onclick="filterleHareketler('crypto')">
+                                            <input type="radio" class="btn-check" name="btnPiyasa" id="btnFiltreCrypto" autocomplete="off" onclick="filtreleHareketler('crypto')">
                                             <label class="btn btn-outline-primary btn-sm fw-bold" for="btnFiltreCrypto">Kripto</label>
                                         </div>
                                     </div>
@@ -1110,7 +1110,21 @@
         }
 
         function fiyatlariGuncelle() {
-            fetch('/api/fiyatlar').then(r => r.json()).then(data => {
+            const zamanDamgasi = new Date().getTime();
+            const url = `/api/fiyatlar?t=${zamanDamgasi}`;
+
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                },
+                cache: 'no-store'
+            })
+            .then(r => r.json())
+            .then(data => {
                 const veriler = {...data.kurlar, ...data.altin};
                 sonPythonVerileri = veriler;
 
@@ -1144,7 +1158,7 @@
                 localStorage.setItem('mbtFiyatHafizasi', JSON.stringify(oncekiFiyatlar));
                 piyasaHareketleriniGuncelle();
                 if(document.getElementById('pills-portfoy-tab').classList.contains('active')) portfoyVerileriniCek();
-            }).catch(() => {});
+            }).catch(e => console.error("Fiyat Güncelleme Hatası:", e));
         }
 
         function piyasaHareketleriniGuncelle() {
@@ -1564,6 +1578,7 @@
         function hizGuncelle() {
             GUNCELLEME_ARALIGI_MS = parseInt(document.getElementById('ayar-hiz').value);
             localStorage.setItem('mbtYenilemeHizi', GUNCELLEME_ARALIGI_MS);
+
 
             clearInterval(veriGuncellemeTimer);
             veriGuncellemeTimer = setInterval(() => {
