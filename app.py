@@ -24,12 +24,18 @@ VARSAYILAN_PORT = 5000
 VERI_YUKLENIYOR = "..."
 VERI_YOK = "---"
 DUSUK_FIYATLI_SEMBOLLER = ["DOGEUSDT", "XRPUSDT"]
-CACHE_SURESI = 4
-REQUEST_TIMEOUT = 5
 
+# ⚠️ HIZ DENGELENDİ: Ban yememek için 12 Saniye idealdir!
+CACHE_SURESI = 8
+REQUEST_TIMEOUT = 6
+
+# 🥷 NİNJA BAŞLIKLARI: TradingView'u kandırmak için Origin ve Referer eklendi
 TARAYICI_BASLIGI = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'Origin': 'https://www.tradingview.com',
+    'Referer': 'https://www.tradingview.com/'
 }
 
 RAM_ACILIS_FIYATLARI = {}
@@ -37,17 +43,14 @@ ACILIS_YUKLENDI_MI = False
 
 sonVeriler = {
     "kurlar": {k: VERI_YUKLENIYOR for k in ["USD", "EUR", "GBP", "JPY", "PLN", "CHF", "CAD", "RUB", "SAR"]},
-    "altin": {k: VERI_YUKLENIYOR for k in
-              ["GRAM", "CEYREK", "YARIM", "TAM", "ATA", "ONS", "ONS-GUMUS", "BRENT", "BAKIR"]},
+    "altin": {k: VERI_YUKLENIYOR for k in ["GRAM", "CEYREK", "YARIM", "TAM", "ATA", "ONS", "ONS-GUMUS", "BRENT", "BAKIR"]},
     "kripto": {k: VERI_YUKLENIYOR for k in ["BTC", "ETH", "SOL", "AVAX", "DOGE", "XRP"]}
 }
-
 
 def fiyatiFormatla(deger, sembol=""):
     if sembol in DUSUK_FIYATLI_SEMBOLLER:
         return "{:.4f}".format(deger).replace('.', ',')
     return "{:,.2f}".format(deger).replace(',', 'X').replace('.', ',').replace('X', '.')
-
 
 def metniSayiyaCevir(metin):
     try:
@@ -62,7 +65,6 @@ def metniSayiyaCevir(metin):
     except:
         return 0.0
 
-
 def acilis_fiyatlarini_getir():
     global RAM_ACILIS_FIYATLARI, ACILIS_YUKLENDI_MI
     if not ACILIS_YUKLENDI_MI:
@@ -70,10 +72,9 @@ def acilis_fiyatlarini_getir():
             acilislar_db = supabase.table("gunluk_acilis").select("*").execute().data
             RAM_ACILIS_FIYATLARI = {row["varlik_kodu"]: row["fiyat"] for row in acilislar_db}
             ACILIS_YUKLENDI_MI = True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Acilis fiyatlari hatasi: {e}")
     return RAM_ACILIS_FIYATLARI
-
 
 # ==============================================================
 # ⚡ PARALEL ÇEKİM (TURBO MOD) FONKSİYONLARI
@@ -99,28 +100,20 @@ def cek_tv_forex():
                 f = float(item.get("d", [0])[0])
                 if f <= 0: continue
 
-                if t == "FX_IDC:USDTRY":
-                    ham_kurlar["USD"] = "{:.4f}".format(f).replace('.', ',')
-                elif t == "FX_IDC:EURTRY":
-                    ham_kurlar["EUR"] = "{:.4f}".format(f).replace('.', ',')
-                elif t == "FX_IDC:GBPTRY":
-                    ham_kurlar["GBP"] = "{:.4f}".format(f).replace('.', ',')
-                elif t == "FX_IDC:CHFTRY":
-                    ham_kurlar["CHF"] = "{:.4f}".format(f).replace('.', ',')
-                elif t == "FX_IDC:CADTRY":
-                    ham_kurlar["CAD"] = "{:.4f}".format(f).replace('.', ',')
-                elif t == "FX_IDC:JPYTRY":
-                    ham_kurlar["JPY"] = "{:.4f}".format(f).replace('.', ',')
-                elif t == "FX_IDC:PLNTRY":
-                    ham_kurlar["PLN"] = "{:.4f}".format(f).replace('.', ',')
-                elif t == "FX_IDC:RUBTRY":
-                    ham_kurlar["RUB"] = "{:.4f}".format(f).replace('.', ',')
-                elif t == "FX_IDC:SARTRY":
-                    ham_kurlar["SAR"] = "{:.4f}".format(f).replace('.', ',')
-    except:
-        pass
+                if t == "FX_IDC:USDTRY": ham_kurlar["USD"] = "{:.4f}".format(f).replace('.', ',')
+                elif t == "FX_IDC:EURTRY": ham_kurlar["EUR"] = "{:.4f}".format(f).replace('.', ',')
+                elif t == "FX_IDC:GBPTRY": ham_kurlar["GBP"] = "{:.4f}".format(f).replace('.', ',')
+                elif t == "FX_IDC:CHFTRY": ham_kurlar["CHF"] = "{:.4f}".format(f).replace('.', ',')
+                elif t == "FX_IDC:CADTRY": ham_kurlar["CAD"] = "{:.4f}".format(f).replace('.', ',')
+                elif t == "FX_IDC:JPYTRY": ham_kurlar["JPY"] = "{:.4f}".format(f).replace('.', ',')
+                elif t == "FX_IDC:PLNTRY": ham_kurlar["PLN"] = "{:.4f}".format(f).replace('.', ',')
+                elif t == "FX_IDC:RUBTRY": ham_kurlar["RUB"] = "{:.4f}".format(f).replace('.', ',')
+                elif t == "FX_IDC:SARTRY": ham_kurlar["SAR"] = "{:.4f}".format(f).replace('.', ',')
+        else:
+            logger.error(f"TV Forex Ban/Hata: HTTP {r_fx.status_code}")
+    except Exception as e:
+        logger.error(f"TV Forex Çöktü: {e}")
     return ham_kurlar
-
 
 def cek_tv_cfd():
     ham_altin = {}
@@ -153,22 +146,21 @@ def cek_tv_cfd():
                 elif ("COPPER" in t or "XCUUSD" in t) and not bulunanlar["BAKIR"]:
                     ham_altin["BAKIR"] = "{:.4f}".format(f).replace('.', ',')
                     bulunanlar["BAKIR"] = True
-    except:
-        pass
+        else:
+            logger.error(f"TV CFD Ban/Hata: HTTP {r_cfd.status_code}")
+    except Exception as e:
+        logger.error(f"TV CFD Çöktü: {e}")
     return ham_altin
-
 
 def cek_brent():
     try:
-        r = requests.get("https://www.google.com/finance/quote/BZW00:NYMEX", headers=TARAYICI_BASLIGI,
-                         timeout=REQUEST_TIMEOUT)
+        r = requests.get("https://www.google.com/finance/quote/BZW00:NYMEX", headers=TARAYICI_BASLIGI, timeout=REQUEST_TIMEOUT)
         if r.status_code == 200:
             match = re.search(r'class="YMlKec fxKbKc">\$?([0-9,\.]+)', r.text)
             if match:
                 val = float(match.group(1).replace(',', ''))
                 if val > 0: return "{:.2f}".format(val).replace('.', ',')
-    except:
-        pass
+    except: pass
     try:
         r = requests.get("https://www.cnbc.com/quotes/@LCO.1", headers=TARAYICI_BASLIGI, timeout=REQUEST_TIMEOUT)
         if r.status_code == 200:
@@ -176,10 +168,8 @@ def cek_brent():
             if match:
                 val = float(match.group(1))
                 if val > 0: return "{:.2f}".format(val).replace('.', ',')
-    except:
-        pass
+    except: pass
     return VERI_YOK
-
 
 def cek_binance():
     ham_kripto = {}
@@ -192,10 +182,9 @@ def cek_binance():
                 fiyat = float(coin["price"])
                 kod = sym.replace("USDT", "")
                 ham_kripto[kod] = fiyatiFormatla(fiyat, sym)
-    except:
-        pass
+    except Exception as e:
+        logger.error(f"Binance Hatası: {e}")
     return ham_kripto
-
 
 # ==============================================================
 # ANA MOTOR: PARALEL HARMANLAMA
@@ -208,40 +197,29 @@ def verileriCek_gercek():
                      "ONS": VERI_YOK, "ONS-GUMUS": VERI_YOK, "BRENT": VERI_YOK, "BAKIR": VERI_YOK}
     ham_kripto_str = {}
 
-    # 4 Kaynağı AYNI ANDA çalıştır!
     with ThreadPoolExecutor(max_workers=4) as executor:
         fut_forex = executor.submit(cek_tv_forex)
         fut_cfd = executor.submit(cek_tv_cfd)
         fut_brent = executor.submit(cek_brent)
         fut_binance = executor.submit(cek_binance)
 
-        # Sonuçları topla (Biri takılırsa diğerlerini beklemez)
-        try:
-            ham_kurlar_str.update(fut_forex.result(timeout=REQUEST_TIMEOUT + 1))
-        except:
-            pass
+        try: ham_kurlar_str.update(fut_forex.result(timeout=REQUEST_TIMEOUT + 2))
+        except Exception as e: logger.error(f"Executor Forex Hatası: {e}")
+
+        try: ham_altin_str.update(fut_cfd.result(timeout=REQUEST_TIMEOUT + 2))
+        except Exception as e: logger.error(f"Executor CFD Hatası: {e}")
 
         try:
-            ham_altin_str.update(fut_cfd.result(timeout=REQUEST_TIMEOUT + 1))
-        except:
-            pass
-
-        try:
-            brent_sonuc = fut_brent.result(timeout=REQUEST_TIMEOUT + 1)
+            brent_sonuc = fut_brent.result(timeout=REQUEST_TIMEOUT + 2)
             if brent_sonuc != VERI_YOK: ham_altin_str["BRENT"] = brent_sonuc
-        except:
-            pass
+        except Exception as e: logger.error(f"Executor Brent Hatası: {e}")
 
-        try:
-            ham_kripto_str.update(fut_binance.result(timeout=REQUEST_TIMEOUT + 1))
-        except:
-            pass
+        try: ham_kripto_str.update(fut_binance.result(timeout=REQUEST_TIMEOUT + 2))
+        except Exception as e: logger.error(f"Executor Binance Hatası: {e}")
 
-    # Altın Hesaplama Matematiği
     ons_str = ham_altin_str.get("ONS", VERI_YOK)
     usd_str = ham_kurlar_str.get("USD", VERI_YOK)
 
-    # GÜVENLİK ZIRHI: Eğer Dolar o an çekilemediyse, son bilinen hafızadaki doları kullan.
     if usd_str == VERI_YOK and type(sonVeriler["kurlar"].get("USD")) == dict:
         usd_str = sonVeriler["kurlar"]["USD"].get("fiyat", VERI_YOK)
 
@@ -259,7 +237,7 @@ def verileriCek_gercek():
 
     acilis_sozlugu = acilis_fiyatlarini_getir()
 
-    def zenginlestir(ham_veri):
+    def zenginlestir(ham_veri, veri_tipi):
         zengin_veri = {}
         for kod, fiyat_str in ham_veri.items():
             if fiyat_str in [VERI_YUKLENIYOR, VERI_YOK]:
@@ -273,27 +251,25 @@ def verileriCek_gercek():
             zengin_veri[kod] = {"fiyat": fiyat_str, "yuzde": yuzde}
         return zengin_veri
 
-    if ham_kurlar_str: sonVeriler["kurlar"] = zenginlestir(ham_kurlar_str)
-    if ham_altin_str: sonVeriler["altin"] = zenginlestir(ham_altin_str)
-    if ham_kripto_str: sonVeriler["kripto"] = zenginlestir(ham_kripto_str)
+    if ham_kurlar_str: sonVeriler["kurlar"] = zenginlestir(ham_kurlar_str, "Kurlar")
+    if ham_altin_str: sonVeriler["altin"] = zenginlestir(ham_altin_str, "Altin")
+    if ham_kripto_str: sonVeriler["kripto"] = zenginlestir(ham_kripto_str, "Kripto")
 
 
 def arkaplan_dongusu():
     while True:
         try:
             verileriCek_gercek()
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Ana Dongu Coktu: {e}")
         time.sleep(CACHE_SURESI)
-
 
 try:
     verileriCek_gercek()
-except:
-    pass
+except Exception as e:
+    logger.error(f"Ilk Cekim Hatasi: {e}")
 
 threading.Thread(target=arkaplan_dongusu, daemon=True).start()
-
 
 @app.route("/api/kaydet-gecmis", methods=["POST"])
 def kaydetGecmis():
@@ -307,7 +283,6 @@ def kaydetGecmis():
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)}), 400
     return jsonify({"durum": "gecersiz_veri"}), 400
-
 
 @app.route("/api/gece-tetikleyici")
 def geceTetikleyici():
@@ -332,16 +307,13 @@ def geceTetikleyici():
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)})
 
-
 @app.route("/")
 def anaSayfa():
     return render_template("index.html")
 
-
 @app.route("/api/fiyatlar")
 def apiFiyatlar():
     return jsonify(sonVeriler)
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", VARSAYILAN_PORT))
