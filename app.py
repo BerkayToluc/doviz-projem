@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import requests
 import threading
 import re
@@ -9,7 +10,7 @@ from flask import Flask, render_template, jsonify, request
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# Loglama yapılandırması (Olası hataları anında görmek için)
+# Loglama yapılandırması
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -26,9 +27,8 @@ VERI_YUKLENIYOR = "..."
 VERI_YOK = "---"
 DUSUK_FIYATLI_SEMBOLLER = ["DOGEUSDT", "XRPUSDT"]
 
-# CLAUDE'UN UYARISI ÜZERİNE GÜNCELLENEN SÜRELER ⏱️
 CACHE_SURESI = 8
-REQUEST_TIMEOUT = 18  # Trunçgil gecikirse diye 10'dan 18'e çıkarıldı!
+REQUEST_TIMEOUT = 15
 
 TARAYICI_BASLIGI = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
@@ -43,6 +43,35 @@ sonVeriler = {
               ["GRAM", "CEYREK", "YARIM", "TAM", "ATA", "ONS", "ONS-GUMUS", "BRENT", "BAKIR"]},
     "kripto": {k: VERI_YUKLENIYOR for k in ["BTC", "ETH", "SOL", "AVAX", "DOGE", "XRP"]}
 }
+
+# ==============================================================
+# 🗂️ ORTAK PANO (PING-PONG ENGELLEYİCİ CACHE SİSTEMİ)
+# ==============================================================
+CACHE_DOSYASI = "piyasa_cache.json"
+
+
+def cache_yaz(veri):
+    try:
+        temp_file = "cache_tmp.json"
+        with open(temp_file, "w", encoding="utf-8") as f:
+            json.dump(veri, f, ensure_ascii=False)
+        os.replace(temp_file, CACHE_DOSYASI)  # Kesin ve güvenli yazma
+    except Exception as e:
+        logger.error(f"❌ Cache yazma hatasi: {e}")
+
+
+def cache_oku():
+    try:
+        if os.path.exists(CACHE_DOSYASI):
+            with open(CACHE_DOSYASI, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except:
+        pass
+    return sonVeriler
+
+
+# Uygulama başlarken panoyu oluştur
+cache_yaz(sonVeriler)
 
 
 def fiyatiFormatla(deger, sembol=""):
@@ -72,7 +101,7 @@ def acilis_fiyatlarini_getir():
             acilislar_db = supabase.table("gunluk_acilis").select("*").execute().data
             RAM_ACILIS_FIYATLARI = {row["varlik_kodu"]: row["fiyat"] for row in acilislar_db}
             ACILIS_YUKLENDI_MI = True
-        except Exception as e:
+        except:
             pass
     return RAM_ACILIS_FIYATLARI
 
@@ -87,30 +116,26 @@ def truncgil_piyasa_cek(ham_kurlar_str, ham_altin_str):
 
         if r.status_code == 200:
             data = r.json()
-
             for kod in ["USD", "EUR", "GBP", "CHF", "CAD", "JPY", "RUB", "SAR"]:
                 if kod in data:
                     satis = data[kod].get("Satış") or data[kod].get("satis")
                     if satis: ham_kurlar_str[kod] = satis
 
-            altinlar = {
-                "GRAM": "gram-altin",
-                "CEYREK": "ceyrek-altin",
-                "YARIM": "yarim-altin",
-                "TAM": "tam-altin",
-                "ATA": "cumhuriyet-altini",
-                "ONS": "ons"
-            }
+            altinlar = {"GRAM": "gram-altin", "CEYREK": "ceyrek-altin", "YARIM": "yarim-altin", "TAM": "tam-altin",
+                        "ATA": "cumhuriyet-altini", "ONS": "ons"}
             for kod, isim in altinlar.items():
                 if isim in data:
                     satis = data[isim].get("Satış") or data[isim].get("satis")
                     if satis: ham_altin_str[kod] = satis
 
+            # Başarılı logu eklendi
             logger.info("✅ Truncgil verileri başarıyla çekildi.")
         else:
-            logger.error(f"❌ Truncgil Hata: HTTP {r.status_code}")
+            # HTTP hata logu eklendi
+            logger.error(f"❌ Truncgil verileri çekilemedi! HTTP Kodu: {r.status_code}")
     except Exception as e:
-        logger.error(f"❌ Truncgil Coktu: {e}")
+        # Çökme/Timeout logu eklendi
+        logger.error(f"❌ Truncgil verileri çekilemedi! (Bağlantı Hatası): {e}")
 
 
 # ==============================================================
@@ -120,10 +145,9 @@ def eksik_dovizleri_cek(ham_kurlar_str):
     eksik_dovizler = [d for d in ["PLN", "RUB", "SAR", "CAD", "JPY"] if
                       ham_kurlar_str.get(d) == VERI_YOK or d not in ham_kurlar_str]
     if not eksik_dovizler: return
-
     try:
         url = "https://api.exchangerate-api.com/v4/latest/USD"
-        r = requests.get(url, timeout=REQUEST_TIMEOUT)
+        r = requests.get(url, timeout=10)
         if r.status_code == 200:
             rates = r.json().get("rates", {})
             usd_try = rates.get("TRY")
@@ -133,8 +157,8 @@ def eksik_dovizleri_cek(ham_kurlar_str):
                     if rate_usd and rate_usd > 0:
                         val_try = usd_try / rate_usd
                         ham_kurlar_str[d] = "{:.4f}".format(val_try).replace('.', ',')
-    except Exception as e:
-        logger.error(f"❌ ExchangeRate-API Hatası: {e}")
+    except:
+        pass
 
 
 # ==============================================================
@@ -182,8 +206,14 @@ def binance_cek(ham_kripto):
                 fiyat = float(coin["price"])
                 kod = sym.replace("USDT", "")
                 ham_kripto[kod] = fiyatiFormatla(fiyat, sym)
+            # Başarılı logu eklendi
+            logger.info("✅ Binance verileri başarıyla çekildi.")
+        else:
+            # HTTP hata logu eklendi
+            logger.error(f"❌ Binance verileri çekilemedi! HTTP Kodu: {r.status_code}")
     except Exception as e:
-        logger.error(f"❌ Binance Hatası: {e}")
+        # Çökme/Timeout logu eklendi
+        logger.error(f"❌ Binance verileri çekilemedi! (Bağlantı Hatası): {e}")
 
 
 # ==============================================================
@@ -201,23 +231,25 @@ def verileriCek_gercek():
         fut_trunc = executor.submit(truncgil_piyasa_cek, ham_kurlar_str, ham_altin_str)
         fut_binance = executor.submit(binance_cek, ham_kripto_str)
 
-        # Hata yutmayı engelledik, Timeout sınırını 20 saniye yaptık!
         try:
             fut_trunc.result(timeout=20)
         except TimeoutError:
-            logger.error("🚨 Truncgil API zaman aşımına uğradı (Timeout)!")
-        except Exception as e:
-            logger.error(f"🚨 Truncgil Thread Hatası: {e}")
+            logger.error("❌ Truncgil isteği zaman aşımına uğradı (Timeout)!")
+        except Exception:
+            pass
 
         try:
             fut_binance.result(timeout=20)
         except TimeoutError:
-            logger.error("🚨 Binance API zaman aşımına uğradı (Timeout)!")
-        except Exception as e:
-            logger.error(f"🚨 Binance Thread Hatası: {e}")
+            logger.error("❌ Binance isteği zaman aşımına uğradı (Timeout)!")
+        except Exception:
+            pass
 
     eksik_dovizleri_cek(ham_kurlar_str)
     emtia_cnbc_cek(ham_altin_str)
+
+    # Ortak panodan son bilinen sağlam verileri al
+    eski_ortak_veri = cache_oku()
 
     ons_str = ham_altin_str.get("ONS", VERI_YOK)
     usd_str = ham_kurlar_str.get("USD", VERI_YOK)
@@ -225,7 +257,6 @@ def verileriCek_gercek():
     if ons_str != VERI_YOK and usd_str != VERI_YOK:
         ons_val = metniSayiyaCevir(ons_str)
         usd_val = metniSayiyaCevir(usd_str)
-
         if ons_val > 0 and usd_val > 0:
             gram = (ons_val * usd_val) / 31.1034768
             if ham_altin_str.get("GRAM", VERI_YOK) == VERI_YOK: ham_altin_str["GRAM"] = fiyatiFormatla(gram)
@@ -236,14 +267,12 @@ def verileriCek_gercek():
 
     acilis_sozlugu = acilis_fiyatlarini_getir()
 
-    def zenginlestir(ham_veri, eski_zengin_veri):
+    def zenginlestir(ham_veri, eski_kategori_verisi):
         zengin_veri = {}
         for kod, fiyat_str in ham_veri.items():
             if fiyat_str in [VERI_YUKLENIYOR, VERI_YOK]:
-                # Eğer API o an boş döndüyse, ESKİ VERİYİ KORU! (Hayatta kalma mekanizması)
-                zengin_veri[kod] = eski_zengin_veri.get(kod, {"fiyat": fiyat_str, "yuzde": 0.0})
+                zengin_veri[kod] = eski_kategori_verisi.get(kod, {"fiyat": fiyat_str, "yuzde": 0.0})
                 continue
-
             guncel_deger = metniSayiyaCevir(fiyat_str)
             acilis_degeri = acilis_sozlugu.get(kod)
             yuzde = 0.0
@@ -252,9 +281,12 @@ def verileriCek_gercek():
             zengin_veri[kod] = {"fiyat": fiyat_str, "yuzde": yuzde}
         return zengin_veri
 
-    if ham_kurlar_str: sonVeriler["kurlar"] = zenginlestir(ham_kurlar_str, sonVeriler["kurlar"])
-    if ham_altin_str: sonVeriler["altin"] = zenginlestir(ham_altin_str, sonVeriler["altin"])
-    if ham_kripto_str: sonVeriler["kripto"] = zenginlestir(ham_kripto_str, sonVeriler["kripto"])
+    if ham_kurlar_str: sonVeriler["kurlar"] = zenginlestir(ham_kurlar_str, eski_ortak_veri["kurlar"])
+    if ham_altin_str: sonVeriler["altin"] = zenginlestir(ham_altin_str, eski_ortak_veri["altin"])
+    if ham_kripto_str: sonVeriler["kripto"] = zenginlestir(ham_kripto_str, eski_ortak_veri["kripto"])
+
+    # İŞTE BÜTÜN SIR BURADA: ORTAK PANOYA YAZIYORUZ
+    cache_yaz(sonVeriler)
 
 
 def arkaplan_dongusu():
@@ -270,7 +302,7 @@ logger.info("Uygulama başlatılıyor - ilk veri çekimi yapılıyor...")
 try:
     verileriCek_gercek()
 except Exception as e:
-    logger.error(f"İlk veri çekimi hatası: {e}")
+    logger.error(f"❌ İlk veri çekimi hatası: {e}")
 
 threading.Thread(target=arkaplan_dongusu, daemon=True).start()
 
@@ -287,14 +319,13 @@ def add_header(response):
 def kaydetGecmis():
     try:
         veri = request.json
-        kullanici_id = veri.get("kullanici_id")
-        bakiye = veri.get("bakiye")
-        if kullanici_id and bakiye is not None:
-            supabase.table("portfoy_gecmisi").insert({"kullanici_id": kullanici_id, "bakiye": float(bakiye)}).execute()
+        if veri.get("kullanici_id") and veri.get("bakiye") is not None:
+            supabase.table("portfoy_gecmisi").insert(
+                {"kullanici_id": veri["kullanici_id"], "bakiye": float(veri["bakiye"])}).execute()
             return jsonify({"durum": "basarili"})
-    except Exception as e:
-        return jsonify({"durum": "hata", "mesaj": str(e)}), 400
-    return jsonify({"durum": "gecersiz_veri"}), 400
+    except:
+        pass
+    return jsonify({"durum": "hata"}), 400
 
 
 @app.route("/api/gece-tetikleyici")
@@ -302,7 +333,8 @@ def geceTetikleyici():
     global RAM_ACILIS_FIYATLARI, ACILIS_YUKLENDI_MI
     try:
         verileriCek_gercek()
-        tum_veriler = {**sonVeriler.get("kurlar", {}), **sonVeriler.get("altin", {}), **sonVeriler.get("kripto", {})}
+        ortak_veri = cache_oku()
+        tum_veriler = {**ortak_veri.get("kurlar", {}), **ortak_veri.get("altin", {}), **ortak_veri.get("kripto", {})}
         kayit_listesi, yeni_ram_verisi = [], {}
 
         for kod, data in tum_veriler.items():
@@ -316,7 +348,7 @@ def geceTetikleyici():
             supabase.table("gunluk_acilis").upsert(kayit_listesi).execute()
             RAM_ACILIS_FIYATLARI = yeni_ram_verisi
             ACILIS_YUKLENDI_MI = True
-        return jsonify({"durum": "basarili", "mesaj": "Gece 00:00 fiyatları kaydedildi!"})
+        return jsonify({"durum": "basarili"})
     except Exception as e:
         return jsonify({"durum": "hata", "mesaj": str(e)})
 
@@ -328,7 +360,8 @@ def anaSayfa():
 
 @app.route("/api/fiyatlar")
 def apiFiyatlar():
-    return jsonify(sonVeriler)
+    # Render'daki İşçi A da İşçi B de AYNI panoyu okur! Sekme/Ping-Pong ASLA olmaz.
+    return jsonify(cache_oku())
 
 
 if __name__ == "__main__":
